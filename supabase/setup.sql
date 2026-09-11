@@ -84,8 +84,14 @@ create policy gardens_audio_read  on storage.objects for select
 create policy gardens_audio_write on storage.objects for insert
   with check (bucket_id = 'gardens' and public.is_member());
 
--- ── EDIT THESE TWO LINES ────────────────────────────────────────────
+-- ── who is allowed in ───────────────────────────────────────────────
 insert into public.members (email) values
-  ('you@example.com'),
-  ('her@example.com')
+  ('dhruvshankpal@gmail.com')
 on conflict (email) do nothing;
+
+-- When you have her address, run just this line (any provider, not only
+-- Gmail). Until then she cannot sign in, but you can test both sides
+-- yourself: the yapper/listener choice is per-device, not per-account.
+--
+--   insert into public.members (email) values ('her@address.com')
+--   on conflict (email) do nothing;
