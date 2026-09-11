@@ -22,9 +22,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # Pages must already be switched on for the repo, with its source set to
+      # "GitHub Actions" (Settings -> Pages). The workflow token is not allowed
+      # to create the Pages site itself.
       - uses: actions/configure-pages@v5
-        with:
-          enablement: true   # turns Pages on the first time, no dashboard visit needed
       - name: Upload the front-end
         uses: actions/upload-pages-artifact@v3
         with:

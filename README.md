@@ -82,8 +82,11 @@ Setup, once:
 4. **Allow the redirect.** Authentication → URL Configuration → add your Pages
    URL (`https://<you>.github.io/YapGarden/`) to Redirect URLs, or the sign-in
    link will bounce you somewhere else.
-5. **Push.** The workflow in `.github/workflows/pages.yml` deploys `public/` on
-   every push to `main` and switches Pages on the first time it runs.
+5. **Switch Pages on.** Repo Settings -> Pages -> Source: **GitHub Actions**.
+   This one is manual: the workflow token is not permitted to create the Pages
+   site, so the deploy fails with "Create Pages site failed" until you do it.
+6. **Push.** The workflow in `.github/workflows/pages.yml` then deploys
+   `public/` on every push to `main`.
 
 Signing in is a magic link: type your email, tap the link in the message **on
 the same device**. No passwords.
