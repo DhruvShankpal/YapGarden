@@ -1,0 +1,10 @@
+{
+  "name": "grow-it-out",
+  "version": "0.1.0",
+  "private": true,
+  "description": "yap about it, grow a garden, send it to someone who cares.",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": { "node": ">=18" }
+}

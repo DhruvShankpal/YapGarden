@@ -1,0 +1,598 @@
+<title>Grow It Out</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/* One committed visual world: a night garden on an arcade screen.
+   Single theme by design — every colour painted explicitly. */
+:root {
+  --void: #07060b;
+  --soil: #2a1d14;
+  --bone: #f4e9d8;
+  --haze: #8a7f93;   /* neutral, biased toward the bloom accent */
+  --bloom: #ff7eb6;
+  --stem: #4e9f3d;
+  --edge: #2b2536;
+  --panel: #120e1a;
+  --gut: 16px;
+  --ui: 'Press Start 2P', ui-monospace, monospace;
+  --body: 'Courier Prime', 'Courier New', monospace;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body {
+  margin: 0; height: 100%; background: var(--void); color: var(--bone);
+  font-family: var(--body); font-size: 15px; line-height: 1.7;
+  overscroll-behavior: none;
+}
+body { -webkit-user-select: none; user-select: none; }
+
+#stage { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; z-index: 0; }
+
+.screen { position: fixed; inset: 0; z-index: 1; display: none; flex-direction: column;
+  padding: max(var(--gut), env(safe-area-inset-top)) var(--gut) max(var(--gut), env(safe-area-inset-bottom)); }
+.screen.on { display: flex; }
+.screen.mid { align-items: center; justify-content: center; text-align: center; gap: 10px; position: relative; }
+.screen.mid::before { content: ''; position: absolute; inset: 0; z-index: -1;
+  background: radial-gradient(ellipse 90% 55% at 50% 45%, rgba(7,6,11,.95) 45%, rgba(7,6,11,.72) 72%, rgba(7,6,11,0) 100%); }
+
+h1 { font-family: var(--ui); font-size: clamp(17px, 6vw, 26px); color: var(--bloom); margin: 0; letter-spacing: 1px; text-wrap: balance; }
+h2 { font-family: var(--ui); font-size: 14px; margin: 0; letter-spacing: .5px; }
+p { margin: 0; max-width: 42ch; }
+.lede { color: var(--haze); }
+.mark { font-size: 38px; line-height: 1; }
+.label { font-family: var(--ui); font-size: 8px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--haze); }
+.err { color: #ff7a7a; min-height: 20px; font-size: 13px; }
+
+/* Chunky controls: hard offset shadow, zero radius. */
+button { font-family: var(--ui); border-radius: 0; cursor: pointer; }
+.btn { font-size: 11px; color: var(--bone); background: #17121f; border: 2px solid var(--bone);
+  padding: 14px 18px; box-shadow: 4px 4px 0 #000; min-width: 230px; line-height: 1.5; }
+.btn:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 #000; }
+.btn.go { background: var(--stem); border-color: #dff6c9; color: #06210a; }
+.btn.quiet { background: transparent; border-color: var(--edge); color: var(--haze); box-shadow: none; }
+.btn.wee { min-width: 0; font-size: 9px; padding: 9px 12px; }
+.btn.mic { background: #2a1530; border-color: var(--bloom); color: var(--bloom); font-size: 13px; padding: 17px 22px; }
+.btn.mic.hot { background: #4a1020; border-color: #ff4d4d; color: #ff9a9a; animation: beat 1.2s steps(2) infinite; }
+@keyframes beat { 50% { opacity: .6; } }
+@media (prefers-reduced-motion: reduce) { .btn.mic.hot { animation: none; } }
+.icon { font-size: 14px; color: var(--bone); background: #17121f; border: 2px solid var(--edge); padding: 7px 11px; }
+.icon.lg { font-size: 15px; padding: 11px 15px; border-color: var(--bone); }
+button:focus-visible, .card:focus-visible { outline: 3px solid var(--bloom); outline-offset: 2px; }
+
+/* Floating bars over the stage */
+.bar { position: fixed; left: 0; right: 0; z-index: 2; padding: var(--gut); pointer-events: none; display: none; }
+.bar.on { display: flex; }
+.bar > * { pointer-events: auto; }
+.bar.up { top: 0; padding-top: max(var(--gut), env(safe-area-inset-top)); justify-content: space-between; align-items: flex-start; }
+.bar.down { bottom: 0; padding-bottom: max(var(--gut), env(safe-area-inset-bottom));
+  flex-direction: column; align-items: center; gap: 9px;
+  background: linear-gradient(to top, rgba(7,6,11,.96) 58%, rgba(7,6,11,0)); padding-top: 30px; }
+.chip { font-family: var(--ui); font-size: 8px; color: var(--haze); background: rgba(13,10,20,.85);
+  border: 2px solid var(--edge); padding: 7px 9px; letter-spacing: .5px; }
+.clock { font-family: var(--ui); font-size: 13px; color: var(--bloom); font-variant-numeric: tabular-nums; }
+.clock.wee { font-size: 9px; color: var(--haze); min-width: 44px; text-align: right; }
+
+/* Record hint sits behind the bars, centred on the empty soil */
+#hint { position: fixed; inset: 0; z-index: 1; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; text-align: center; gap: 8px; pointer-events: none; padding: 0 var(--gut); }
+#hint .big { font-family: var(--ui); font-size: clamp(14px, 5vw, 18px); color: var(--bone); }
+
+/* Player */
+.row { display: flex; align-items: center; gap: 11px; width: 100%; max-width: 540px; }
+.track { position: relative; flex: 1; height: 18px; background: #17121f; border: 2px solid var(--edge); cursor: pointer; }
+.fill { position: absolute; inset: 0 auto 0 0; width: 0; background: #3a2b4a; }
+.ticks { position: absolute; inset: 0; }
+.ticks i { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--stem); }
+.ticks i.re { background: var(--bloom); top: 52%; }
+
+.deck { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; max-width: 540px; max-height: 26vh; overflow-y: auto; }
+.deck button { font-family: var(--body); font-size: 17px; line-height: 1; background: #17121f; color: var(--bone);
+  border: 2px solid var(--edge); padding: 8px 9px; }
+.deck button.say { font-size: 11px; font-weight: 700; max-width: 160px; padding: 10px; }
+.deck button.picked { border-color: var(--bloom); background: #2a1530; }
+.tip { font-size: 12px; color: var(--haze); text-align: center; max-width: 40ch; }
+
+/* Inbox */
+.top { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 14px; }
+.list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 11px; }
+.card { border: 2px solid var(--edge); background: rgba(18,14,26,.92); box-shadow: 4px 4px 0 #000;
+  padding: 13px 14px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  text-align: left; color: var(--bone); font-family: var(--body); width: 100%; }
+.card.fresh { border-color: var(--bloom); }
+.card .who { font-family: var(--ui); font-size: 11px; line-height: 1.6; }
+.card .when { font-size: 12px; color: var(--haze); }
+.card .pip { font-size: 20px; }
+.census { font-family: var(--ui); font-size: 10px; line-height: 2.2; text-align: left; margin: 4px 0; }
+.verdict { color: var(--bloom); font-size: 14px; max-width: 34ch; }
+.foot { font-size: 11px; color: var(--haze); text-align: center; margin-top: 12px; }
+a { color: var(--bloom); }
+</style>
+
+<canvas id="stage"></canvas>
+
+<!-- who's this -->
+<section id="s-pick" class="screen mid on">
+  <div class="mark">🌷</div>
+  <h1>grow it out</h1>
+  <p class="lede">yap about it. every tap grows a flower.</p>
+  <button class="btn" data-me="her">🌷 i'm the yapper</button>
+  <button class="btn" data-me="him">🫂 i'm the listener</button>
+  <p class="foot">both of you can do both — this just picks whose inbox is whose.</p>
+</section>
+
+<!-- record -->
+<div id="hint" style="display:none">
+  <p class="big">what happened?</p>
+  <p class="lede">hit yap, then tap anywhere to grow</p>
+</div>
+
+<!-- after recording -->
+<section id="s-done" class="screen mid">
+  <h2>garden complete 🌷</h2>
+  <p id="d-stats" class="lede"></p>
+  <pre id="d-census" class="census"></pre>
+  <p id="d-verdict" class="verdict"></p>
+  <button id="d-send" class="btn go">🌱 send it</button>
+  <button id="d-bin" class="btn quiet">nah i'm good</button>
+  <p id="d-err" class="err"></p>
+</section>
+
+<!-- inbox -->
+<section id="s-inbox" class="screen">
+  <div class="top">
+    <h2 id="i-title">gardens</h2>
+    <button id="i-new" class="btn wee">+ yap</button>
+  </div>
+  <div id="i-list" class="list"></div>
+  <p id="i-note" class="foot"></p>
+  <button id="i-swap" class="btn quiet wee" style="margin-top:10px">switch person</button>
+</section>
+
+<!-- top bar (record + playback) -->
+<div id="bar-up" class="bar up">
+  <button id="b-back" class="icon" aria-label="back">←</button>
+  <span id="b-chip" class="chip">0 planted</span>
+</div>
+
+<!-- bottom bar: record -->
+<div id="bar-rec" class="bar down">
+  <div id="r-clock" class="clock">0:00</div>
+  <button id="r-btn" class="btn mic">hold to yap</button>
+</div>
+
+<!-- bottom bar: player -->
+<div id="bar-play" class="bar down">
+  <div class="row">
+    <button id="p-btn" class="icon lg" aria-label="play">▶</button>
+    <div id="p-track" class="track"><div id="p-fill" class="fill"></div><div id="p-ticks" class="ticks"></div></div>
+    <span id="p-clock" class="clock wee">0:00</span>
+  </div>
+  <div id="p-deck" class="deck"></div>
+  <p id="p-tip" class="tip"></p>
+</div>
+
+<audio id="au" preload="metadata"></audio>
+
+<script>
+/* ── placeholder pixel art ───────────────────────────────────────────
+   Each plant is a char grid + a one-row stem that tiles downward, so a
+   single sprite grows to whatever height the tap asked for. Stem lives
+   in columns 4-5 so leaves attach procedurally. */
+const PAL = { G:'#4e9f3d', g:'#2f6b24', L:'#6fcf52', P:'#ff7eb6', p:'#d94f93',
+  R:'#ff4d4d', r:'#b32121', Y:'#ffd93d', y:'#e6a700', B:'#6b4423',
+  C:'#e24b3b', W:'#f4e9d8', w:'#ffffff', T:'#3fa66a', t:'#2e7d51', S:'#d8f3a3' };
+const STEM='....gG...', LEAF_L='.LLLgG...', LEAF_R='....gGLLL';
+const PLANTS = {
+  sprout:{label:'sprout',emoji:'🌱',stem:STEM,leafy:true,head:['..LL..LL.','...LgGL..','....gG...','....gG...']},
+  clover:{label:'clover',emoji:'☘️',stem:STEM,leafy:true,head:['..gg..gg.','..gggggg.','...gggg..','....gG...','....gG...']},
+  mushroom:{label:'mushroom',emoji:'🍄',stem:'...WWWW..',leafy:false,head:['..CCCCCC.','.CCwCCwCC','.CCCCCCCC','...WWWW..','...WWWW..','..WWWWWW.']},
+  tulip:{label:'flower',emoji:'🌷',stem:STEM,leafy:true,head:['...pppp..','..pPPPPp.','..pPPPPp.','...pPPp..','....gG...','..L.gG.L.','....gG...']},
+  weed:{label:'suspicious weed',emoji:'🌿',stem:STEM,leafy:true,head:['.g..gG..g','..g.gG.g.','...ggGg..','....gG...','...LgG...','....gGL..','....gG...']},
+  rose:{label:'rose',emoji:'🌹',stem:STEM,leafy:true,head:['...RRRR..','..RrRRrR.','..RRrrRR.','...RRRR..','....gG...','...LgGL..','....gG...','....gG...']},
+  sunflower:{label:'sunflower',emoji:'🌻',stem:STEM,leafy:true,head:['...YYYY..','..YyYYyY.','.YyBBBBy.','.YYBBBBY.','..YyYYyY.','...YYYY..','....gG...','..L.gG.L.','....gG...']},
+  cactus:{label:'cactus',emoji:'🌵',stem:'...tTTT..',leafy:false,arm:'.T.tTTT.T',head:['...TTTT..','.T.TTTT.T','.T.TTTT.T','.TTTTTTTT','.T.TTTT.T','...TTTT..','...TSTT..','...TTTT..','...TTTT..']},
+};
+const SHORT=['sprout','clover','mushroom'], MID=['tulip','weed','rose','sprout'], TALL=['sunflower','cactus','tulip','rose','weed'];
+const pickPlant = (rows) => { const pool = rows<=7?SHORT:rows<=12?MID:TALL; return pool[Math.floor(Math.random()*pool.length)]; };
+
+function drawPlant(ctx, plant, cx, groundY, rows, px, grow) {
+  const def = PLANTS[plant.type] || PLANTS.tulip;
+  const total = Math.max(def.head.length, rows);
+  const visible = Math.ceil(total * Math.min(1, Math.max(0, grow)));
+  const left = Math.round(cx - 4.5 * px);
+  const phase = plant.seed || 0;
+  const wob = (r) => Math.round(Math.sin(r * 0.26 + phase)) * px;   // stems lean and wander
+  const headShift = wob(def.head.length);
+  for (let r = total - visible; r < total; r++) {
+    let row;
+    if (r < def.head.length) row = def.head[r];
+    else {
+      const i = r - def.head.length;
+      row = def.leafy && i % 9 === 4 ? LEAF_L : def.leafy && i % 9 === 8 ? LEAF_R
+          : def.arm && i % 11 === 5 ? def.arm : def.stem;
+    }
+    const y = groundY - (total - r) * px;
+    const dx = r < def.head.length ? headShift : wob(r);
+    for (let c = 0; c < row.length; c++) {
+      if (row[c] === '.') continue;
+      ctx.fillStyle = PAL[row[c]] || '#fff';
+      ctx.fillRect(left + dx + c * px, y, px, px);
+    }
+  }
+}
+
+/* ── the stage ─────────────────────────────────────────────────────── */
+const $ = (s) => document.querySelector(s);
+const SAYINGS = {'valid.':1,'I would also crash out.':1,'girl stand UP':1,'this is crazy.':1,'you are so right.':1};
+
+class Stage {
+  constructor(canvas) {
+    this.c = canvas; this.ctx = canvas.getContext('2d');
+    this.px = 6; this.pad = 150; this.plants = []; this.reactions = [];
+    this.mode = 'static'; this.time = 0;
+    this.stars = Array.from({length: 44}, () => ({x: Math.random(), y: Math.random()*0.7, a: .15 + Math.random()*.4}));
+    this.resize();
+    addEventListener('resize', () => this.resize());
+    const loop = () => { this.draw(); requestAnimationFrame(loop); };
+    loop();
+  }
+  resize() {
+    const dpr = Math.min(3, devicePixelRatio || 1);
+    this.w = this.c.clientWidth; this.h = this.c.clientHeight;
+    this.c.width = Math.round(this.w*dpr); this.c.height = Math.round(this.h*dpr);
+    this.ctx.setTransform(dpr,0,0,dpr,0,0); this.ctx.imageSmoothingEnabled = false;
+    this.groundY = Math.round(this.h - this.pad);
+  }
+  setPad(p) { this.pad = p; this.resize(); }
+  plantAt(clientX, clientY, t) {
+    const rect = this.c.getBoundingClientRect();
+    const rows = Math.max(4, Math.min(64, Math.round((this.groundY - (clientY - rect.top)) / this.px)));
+    const plant = { x: (clientX - rect.left)/rect.width, rows, type: pickPlant(rows), t, seed: Math.random()*6.28 };
+    plant._t0 = performance.now();
+    this.plants.push(plant);
+    return plant;
+  }
+  load(g) {
+    this.plants = (g.plants||[]).map((p)=>({...p}));
+    this.reactions = (g.reactions||[]).map((r)=>({...r}));
+    this.revealAll();
+  }
+  clear() { this.plants = []; this.reactions = []; this.mode = 'static'; }
+  revealAll() {
+    this.mode = 'static';
+    const t0 = performance.now() - 2000;
+    this.plants.forEach((p)=>{ p._t0 = t0; });
+    this.reactions.forEach((r)=>{ r._t0 = t0; });
+  }
+  seek(ms) {
+    this.time = ms;   // scrubbing back un-grows, so the garden replays
+    for (const p of this.plants) { if (p.t > ms) p._t0 = null; else if (!p._t0) p._t0 = performance.now()-2000; }
+    for (const r of this.reactions) { if (r.t > ms) r._t0 = null; else if (!r._t0) r._t0 = performance.now()-2000; }
+  }
+  draw() {
+    const { ctx, w, h, px, groundY } = this, now = performance.now();
+    ctx.fillStyle = '#07060b'; ctx.fillRect(0,0,w,h);
+    for (const s of this.stars) { ctx.fillStyle = `rgba(244,233,216,${s.a})`; ctx.fillRect(Math.round(s.x*w), Math.round(s.y*groundY), 2, 2); }
+    ctx.fillStyle = '#2a1d14'; ctx.fillRect(0, groundY, w, h - groundY);
+    ctx.fillStyle = '#3b2a1c';
+    for (let x = 0; x < w; x += px*2) ctx.fillRect(x, groundY, px, px);
+    for (const p of this.plants) {
+      if (this.mode === 'timed' && p.t > this.time) { p._t0 = null; continue; }
+      if (!p._t0) p._t0 = now;
+      const k = Math.min(1, (now - p._t0)/420);
+      drawPlant(ctx, p, Math.round(p.x*w), groundY, p.rows, px, 1 - Math.pow(1-k, 3));
+    }
+    for (const r of this.reactions) {
+      if (this.mode === 'timed' && r.t > this.time) { r._t0 = null; continue; }
+      if (!r._t0) r._t0 = now;
+      this.drawReaction(r, now);
+    }
+  }
+  drawReaction(r, now) {
+    const { ctx, w, h } = this, age = now - r._t0, pop = Math.min(1, age/260);
+    let x = r.x*w, y = r.y*h;
+    if (r.emoji === '🦝') { x = ((age/4200 + r.x) % 1.2 - 0.1)*w; y = this.groundY - 14; }  // raccoon respects nothing
+    else y += Math.sin(now/600 + r.x*10)*4;
+    ctx.save(); ctx.globalAlpha = .35 + .65*pop; ctx.textAlign = 'center';
+    if (r.kind === 'text' || SAYINGS[r.emoji]) {
+      ctx.font = '700 13px "Courier Prime", monospace';
+      const tw = ctx.measureText(r.emoji).width, pad = 8;
+      ctx.fillStyle = 'rgba(13,10,20,.92)'; ctx.fillRect(x-tw/2-pad, y-15, tw+pad*2, 25);
+      ctx.strokeStyle = '#ff7eb6'; ctx.lineWidth = 2; ctx.strokeRect(x-tw/2-pad, y-15, tw+pad*2, 25);
+      ctx.fillStyle = '#f4e9d8'; ctx.fillText(r.emoji, x, y+2);
+    } else {
+      const size = 24 * (.6 + .4*pop) * (r.emoji === '🔥' ? 1 + Math.sin(now/90)*.08 : 1);
+      ctx.font = `${size}px serif`; ctx.fillText(r.emoji, x, y);
+    }
+    ctx.restore();
+  }
+}
+
+/* ── storage: db + assets, with an honest local fallback ───────────── */
+let DB = null, ASSETS = null, LOCAL = false;
+const local = { gardens: [] };
+
+const ready = (async () => {
+  try { DB = await claude.use('db'); } catch (e) { DB = null; }
+  try { ASSETS = await claude.use('assets'); } catch (e) { ASSETS = null; }
+  LOCAL = !DB;
+  note();
+})();
+
+function note() {
+  const n = $('#i-note');
+  if (LOCAL) n.textContent = 'offline mode — gardens stay in this tab only.';
+  else if (!ASSETS) n.textContent = 'you can listen and react, but only an editor of this page can record.';
+  else n.textContent = '';
+}
+
+const store = {
+  async list() {
+    if (!DB) return local.gardens.slice().sort((a,b)=>b.createdAt-a.createdAt);
+    const snap = await DB.collection('gardens').orderBy('createdAt','desc').limit(50).get();
+    return snap.docs.map((d)=>({ id: d.id, ...d.data() }));
+  },
+  async get(id) {
+    if (!DB) return local.gardens.find((g)=>g.id===id);
+    const [doc, rs] = await Promise.all([
+      DB.collection('gardens').doc(id).get(),
+      DB.collection('gardens').doc(id).collection('reactions').limit(300).get(),
+    ]);
+    if (!doc.exists) return null;
+    return { id, ...doc.data(), reactions: rs.docs.map((d)=>({ id: d.id, ...d.data() })) };
+  },
+  async create(g, blob) {
+    if (!DB) { const id = 'loc'+Date.now(); local.gardens.push({ ...g, id, audioUrl: URL.createObjectURL(blob), reactions: [] }); return id; }
+    let audioUrl = '';
+    if (ASSETS) {
+      // An audio-only recording is a valid mp4/webm container; assets takes
+      // those two, so declare the container type it actually is.
+      const type = g.mime.includes('mp4') ? 'video/mp4' : 'video/webm';
+      const up = await ASSETS.upload(blob, { type });
+      audioUrl = up.url || ('/_blob/' + up.id);
+    } else {
+      throw new Error("this page can't store audio — ask the owner for edit access");
+    }
+    const ref = DB.collection('gardens').doc();
+    await ref.set({ ...g, audioUrl });
+    return ref.id;
+  },
+  async react(gardenId, r) {
+    if (!DB) { const g = local.gardens.find((x)=>x.id===gardenId); g.reactions.push(r); return; }
+    await DB.collection('gardens').doc(gardenId).collection('reactions').doc().set(r);
+  },
+};
+
+/* ── screens ───────────────────────────────────────────────────────── */
+const stage = new Stage($('#stage'));
+let ME = '';
+try { ME = localStorage.getItem('gio.me') || ''; } catch (e) {}
+const other = (w) => (w === 'her' ? 'him' : 'her');
+const fmt = (ms) => { const s = Math.max(0, Math.floor(ms/1000)); return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`; };
+
+function show(name) {
+  for (const s of document.querySelectorAll('.screen')) s.classList.toggle('on', s.id === 's'+'-'+name);
+  $('#hint').style.display = name === 'record' ? 'flex' : 'none';
+  $('#bar-up').classList.toggle('on', name === 'record' || name === 'play');
+  $('#bar-rec').classList.toggle('on', name === 'record');
+  $('#bar-play').classList.toggle('on', name === 'play');
+  stage.setPad(name === 'play' ? 190 : name === 'record' ? 150 : 120);
+}
+
+// The landing screen opens on a garden someone already grew, not an empty screen.
+function demoGarden() {
+  stage.clear();
+  const demo = [[.1,16,'rose'],[.26,22,'sunflower'],[.44,7,'mushroom'],[.6,19,'tulip'],[.79,14,'weed'],[.92,6,'clover']];
+  stage.plants = demo.map(([x,rows,type],i)=>({ x, rows, type, t:0, seed:i*1.7, _t0: performance.now() - 2000 }));
+}
+
+/* record */
+let media = { rec: null, chunks: [], stream: null, mime: '', startedAt: 0, elapsed: 0, tick: 0 };
+let draft = null;
+
+const pickMime = () => ['audio/mp4','audio/webm;codecs=opus','audio/webm']
+  .find((m)=> window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || '';
+
+function openRecord() {
+  show('record'); stage.clear();
+  $('#b-chip').textContent = '0 planted';
+  $('#r-clock').textContent = '0:00';
+  $('#r-btn').textContent = 'hold to yap';
+  $('#r-btn').classList.remove('hot');
+  $('#hint').style.display = 'flex';
+}
+
+$('#stage').addEventListener('pointerdown', (e) => {
+  if ($('#bar-play').classList.contains('on')) return stamp(e);
+  if (!$('#bar-rec').classList.contains('on')) return;
+  if (!media.rec || media.rec.state !== 'recording') { $('#hint').style.display = 'flex'; return; }
+  stage.plantAt(e.clientX, e.clientY, Date.now() - media.startedAt);
+  $('#b-chip').textContent = stage.plants.length + ' planted';
+});
+
+async function startRec() {
+  try { media.stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+  catch (err) {
+    $('#hint').style.display = 'flex';
+    $('#hint').innerHTML = '<p class="big">no mic 😐</p><p class="lede">allow microphone access in your browser, then tap yap again.</p>';
+    return;
+  }
+  media.mime = pickMime(); media.chunks = [];
+  media.rec = new MediaRecorder(media.stream, media.mime ? { mimeType: media.mime } : {});
+  media.rec.ondataavailable = (e) => { if (e.data.size) media.chunks.push(e.data); };
+  media.rec.onstop = endRec;
+  media.rec.start(1000);
+  media.startedAt = Date.now();
+  $('#hint').style.display = 'none';
+  $('#r-btn').textContent = '🔴 stop';
+  $('#r-btn').classList.add('hot');
+  media.tick = setInterval(()=>{ $('#r-clock').textContent = fmt(Date.now() - media.startedAt); }, 250);
+}
+function stopRec() {
+  clearInterval(media.tick);
+  media.elapsed = Date.now() - media.startedAt;
+  if (media.rec && media.rec.state !== 'inactive') media.rec.stop();
+}
+function endRec() {
+  media.stream.getTracks().forEach((t)=>t.stop());
+  const type = media.rec.mimeType || media.mime || 'audio/webm';
+  draft = { blob: new Blob(media.chunks, { type }), mime: type, durationMs: media.elapsed,
+    plants: stage.plants.map(({x,rows,type:t,t:ts,seed})=>({x,rows,type:t,t:ts,seed})) };
+  showDone();
+}
+
+const VERDICTS = ['yeah that person was annoying.','you, however, should probably drink some water.',
+  'the garden is doing great. you are doing fine.','certified valid behaviour.','this one goes in the archive.'];
+
+function showDone() {
+  show('done');
+  const counts = {};
+  draft.plants.forEach((p)=>{ counts[p.type] = (counts[p.type]||0)+1; });
+  const perMin = draft.plants.length / Math.max(.5, draft.durationMs/60000);
+  const chilli = '🌶️'.repeat(Math.max(1, Math.min(5, Math.round(perMin/3))));
+  $('#d-stats').innerHTML = `${fmt(draft.durationMs)} of yapping<br>${draft.plants.length} plants grown`;
+  $('#d-census').textContent = Object.entries(counts)
+    .map(([k,n])=>`${PLANTS[k].emoji} ${n} ${PLANTS[k].label}${n>1?'s':''}`).join('\n') || 'a suspiciously empty garden';
+  $('#d-verdict').innerHTML = `emotional damage: ${chilli}<br>${VERDICTS[Math.floor(Math.random()*VERDICTS.length)]}`;
+  $('#d-err').textContent = '';
+  $('#d-send').textContent = `🌱 send it to ${other(ME)}`;
+  $('#d-send').disabled = false;
+}
+
+$('#d-send').onclick = async () => {
+  $('#d-send').disabled = true;
+  $('#d-err').textContent = 'sending…';
+  try {
+    await store.create({ from: ME, to: other(ME), createdAt: Date.now(),
+      durationMs: draft.durationMs, mime: draft.mime, plants: draft.plants }, draft.blob);
+    draft = null;
+    openInbox();
+  } catch (err) {
+    $('#d-err').textContent = String(err && err.message || err);
+    $('#d-send').disabled = false;
+  }
+};
+$('#d-bin').onclick = () => { draft = null; openInbox(); };
+
+/* inbox */
+async function openInbox() {
+  show('inbox'); demoGarden();
+  $('#i-title').textContent = ME === 'her' ? 'your gardens' : 'her gardens';
+  $('#i-list').innerHTML = '<p class="foot">looking…</p>';
+  await ready;
+  note();
+  let gardens = [];
+  try { gardens = await store.list(); } catch (err) { $('#i-list').innerHTML = '<p class="err">could not load gardens.</p>'; return; }
+  if (!gardens.length) { $('#i-list').innerHTML = '<p class="foot">nothing here yet. go yap about something.</p>'; return; }
+  $('#i-list').innerHTML = '';
+  for (const g of gardens) {
+    const mine = g.from === ME;
+    const b = document.createElement('button');
+    b.className = 'card';
+    const when = new Date(g.createdAt).toLocaleString([], { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' });
+    b.innerHTML = `<span><span class="who">${mine ? 'you yapped' : 'she yapped'} ${fmt(g.durationMs)}</span><br>
+      <span class="when">${when} · ${(g.plants||[]).length} plants</span></span><span class="pip">${mine ? '🌷' : '🎙️'}</span>`;
+    b.onclick = () => openGarden(g.id);
+    $('#i-list').appendChild(b);
+  }
+}
+
+/* playback + reactions */
+const DECK = [
+  ['🥺','🫂','❤️','😭','🫡'], ['👁️👄👁️','💀','🚨','🤨','😦'], ['😡','🔨','🔥','⚔️','🗡️'],
+  ['🦆','🦝','🍞','🐌','🧍'],
+  ['valid.','I would also crash out.','girl stand UP','this is crazy.','you are so right.'],
+];
+let current = null, picked = null;
+
+async function openGarden(id) {
+  const g = await store.get(id);
+  if (!g) return;
+  current = g; picked = null;
+  show('play');
+  stage.load(g);
+  const au = $('#au');
+  au.src = g.audioUrl || '';
+  $('#p-btn').textContent = '▶';
+  $('#b-chip').textContent = `${g.from === ME ? 'you' : 'her'} · ${fmt(g.durationMs)} · ${(g.plants||[]).length}🌱`;
+  $('#p-clock').textContent = '0:00';
+  $('#p-fill').style.width = '0%';
+  ticks();
+  const mine = g.to === ME;
+  $('#p-deck').style.display = mine ? 'flex' : 'none';
+  $('#p-tip').textContent = mine
+    ? 'pick a sticker, then tap the garden to stamp it at that moment'
+    : `${g.reactions.length} reaction${g.reactions.length === 1 ? '' : 's'} — press play to watch them land`;
+  if (mine) buildDeck();
+}
+
+function buildDeck() {
+  const deck = $('#p-deck');
+  deck.innerHTML = '';
+  for (const group of DECK) for (const item of group) {
+    const b = document.createElement('button');
+    const isText = item.length > 3 && !/\p{Extended_Pictographic}/u.test(item);
+    if (isText) b.className = 'say';
+    b.textContent = item;
+    b.onclick = () => {
+      picked = { emoji: item, kind: isText ? 'text' : 'emoji' };
+      deck.querySelectorAll('button').forEach((x)=>x.classList.remove('picked'));
+      b.classList.add('picked');
+      $('#p-tip').textContent = 'now tap the garden 👆';
+    };
+    deck.appendChild(b);
+  }
+}
+
+async function stamp(e) {
+  if (!current || current.to !== ME) return;
+  if (!picked) { $('#p-tip').textContent = 'pick a sticker first 👇'; return; }
+  const rect = $('#stage').getBoundingClientRect();
+  const r = { ...picked, t: Math.round($('#au').currentTime*1000),
+    x: (e.clientX-rect.left)/rect.width, y: (e.clientY-rect.top)/rect.height, from: ME, createdAt: Date.now() };
+  stage.reactions.push({ ...r, _t0: performance.now() });
+  current.reactions.push(r);
+  ticks();
+  try { await store.react(current.id, r); }
+  catch (err) { $('#p-tip').textContent = 'that reaction did not save 😔'; }
+}
+
+function ticks() {
+  const total = Math.max(1, current.durationMs);
+  $('#p-ticks').innerHTML = [
+    ...(current.plants||[]).map((p)=>`<i style="left:${(p.t/total)*100}%"></i>`),
+    ...(current.reactions||[]).map((r)=>`<i class="re" style="left:${(r.t/total)*100}%"></i>`),
+  ].join('');
+}
+
+const au = $('#au');
+$('#p-btn').onclick = () => (au.paused ? au.play() : au.pause());
+au.onplay = () => { $('#p-btn').textContent = '❚❚'; stage.mode = 'timed'; };
+au.onpause = () => { $('#p-btn').textContent = '▶'; };
+au.onended = () => { $('#p-btn').textContent = '↻'; stage.revealAll(); };
+au.onerror = () => { if (current) $('#p-tip').textContent = "this browser won't play that recording."; };
+au.ontimeupdate = () => {
+  const ms = au.currentTime*1000, total = Math.max(1, current ? current.durationMs : 1);
+  $('#p-clock').textContent = fmt(ms);
+  $('#p-fill').style.width = Math.min(100, (ms/total)*100) + '%';
+  if (stage.mode === 'timed') stage.time = ms;
+};
+$('#p-track').onclick = (e) => {
+  const rect = e.currentTarget.getBoundingClientRect();
+  const ms = ((e.clientX-rect.left)/rect.width) * Math.max(1, current.durationMs);
+  try { au.currentTime = ms/1000; } catch (_) {}
+  stage.mode = 'timed'; stage.seek(ms);
+};
+
+/* wiring */
+document.querySelectorAll('[data-me]').forEach((b)=>{
+  b.onclick = () => { ME = b.dataset.me; try { localStorage.setItem('gio.me', ME); } catch (e) {} openInbox(); };
+});
+$('#i-new').onclick = openRecord;
+$('#i-swap').onclick = () => { ME=''; try { localStorage.removeItem('gio.me'); } catch(e){} show('pick'); demoGarden(); };
+$('#b-back').onclick = () => { if (media.rec && media.rec.state === 'recording') stopRec(); else { au.pause(); openInbox(); } };
+$('#r-btn').onclick = () => { (media.rec && media.rec.state === 'recording') ? stopRec() : startRec(); };
+
+demoGarden();
+if (ME) openInbox(); else show('pick');
+</script>
