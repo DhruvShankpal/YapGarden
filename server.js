@@ -7,7 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
-const PORT = process.env.PORT || 5173;
+const PORT = Number(process.env.PORT) || 8321;  // 5173 is Vite's default — too crowded
 const PUB = path.join(__dirname, 'public');
 const DATA = process.env.DATA_DIR || path.join(__dirname, 'data');
 const AUDIO = path.join(DATA, 'audio');
@@ -197,7 +197,16 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, () => {
-  console.log(`🌷 grow it out  →  http://localhost:${PORT}`);
-  if (!PASS) console.log('   (no GARDEN_PASS set — anyone with the URL can open it)');
-});
+// If the port is busy, walk up to the next free one rather than dying.
+function listen(port, attemptsLeft = 10) {
+  server.once('error', (err) => {
+    if (err.code !== 'EADDRINUSE' || attemptsLeft === 0) throw err;
+    console.log(`   port ${port} is busy, trying ${port + 1}…`);
+    listen(port + 1, attemptsLeft - 1);
+  });
+  server.listen(port, () => {
+    console.log(`🌷 grow it out  →  http://localhost:${port}`);
+    if (!PASS) console.log('   (no GARDEN_PASS set — anyone with the URL can open it)');
+  });
+}
+listen(PORT);

@@ -8,7 +8,7 @@ This is the MVP: bare mechanics, placeholder pixel art, no build step, no npm in
 ## Run it
 
 ```bash
-node server.js          # → http://localhost:5173
+node server.js          # → http://localhost:8321
 ```
 
 That's it — zero dependencies, plain Node.
@@ -16,10 +16,11 @@ That's it — zero dependencies, plain Node.
 Optional:
 
 ```bash
-PORT=8080 GARDEN_PASS=someword node server.js
+PORT=9000 GARDEN_PASS=someword node server.js
 ```
 
-`GARDEN_PASS` puts a shared passcode in front of everything. Leave it unset and
+If 8321 is taken it walks up to the next free port and prints the one it
+actually got. `GARDEN_PASS` puts a shared passcode in front of everything. Leave it unset and
 anyone with the URL can open the gardens.
 
 ## The loop
@@ -71,7 +72,7 @@ Two real constraints:
 
 - **Microphone needs HTTPS** (or `localhost`). Over plain `http://192.168.x.x`
   the mic will be blocked. For testing on phones, run the server and put a tunnel
-  in front of it (`cloudflared tunnel --url http://localhost:5173` or ngrok).
+  in front of it (`cloudflared tunnel --url http://localhost:8321` or ngrok).
 - **Audio codecs differ.** The recorder asks for `audio/mp4` first because an
   iPhone can't reliably decode the `audio/webm` Android would otherwise produce.
   If a recording won't play, the player offers a download link instead of dying
