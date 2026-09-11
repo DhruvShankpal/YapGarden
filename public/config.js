@@ -6,5 +6,5 @@
 // Leave them empty to run against the local Node server (`node server.js`).
 window.YAP_CONFIG = {
   supabaseUrl: 'https://bzrrmcchtmzturyqnsxs.supabase.co',
-  supabaseAnonKey: '',
+  supabaseAnonKey: 'sb_publishable_BCrE3sb7ZjeFzpBwRcVybw_fDrky_Ru',
 };
