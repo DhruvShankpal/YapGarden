@@ -22,7 +22,7 @@ set search_path = public
 as $$
   select exists (
     select 1 from public.members
-    where email = lower(auth.jwt() ->> 'email')
+    where lower(email) = lower(auth.jwt() ->> 'email')
   );
 $$;
 
