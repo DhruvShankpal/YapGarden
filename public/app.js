@@ -3,9 +3,10 @@
 import { Store } from './store.js';
 
 const $ = (s) => document.querySelector(s);
-const SCREENS = ['signin', 'gate', 'record', 'done', 'inbox', 'garden'];
+const SCREENS = ['signin', 'gate', 'home', 'record', 'done', 'inbox', 'garden'];
 const show = (name) => {
   SCREENS.forEach((s) => $('#s-' + s).classList.toggle('hidden', s !== name));
+  $('#stage-home').classList.toggle('hidden', name !== 'home');
   $('#stage-record').classList.toggle('hidden', name !== 'record');
   $('#stage-play').classList.toggle('hidden', name !== 'garden');
 };
@@ -250,6 +251,76 @@ function showDone() {
   $('#done-send').disabled = false;
 }
 
+/* ── home ─────────────────────────────────────────────────────────── */
+
+const TAGLINES = [
+  'got something to get out?',
+  'go on then.',
+  'the garden is listening.',
+  'say the whole thing.',
+  'nobody here but the flowers.',
+];
+
+let homeStage = null, homeSeeded = 0;
+
+function openHome() {
+  show('home');
+  if (!homeStage) {
+    homeStage = new Stage($('#stage-home'), 34);
+    const logo = $('#home-logo');
+    const lctx = logo.getContext('2d');
+    const paint = () => {
+      const dpr = Math.min(3, devicePixelRatio || 1);
+      const cw = logo.clientWidth, ch = logo.clientHeight;
+      if (logo.width !== Math.round(cw * dpr)) {
+        logo.width = Math.round(cw * dpr); logo.height = Math.round(ch * dpr);
+      }
+      lctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      lctx.imageSmoothingEnabled = false;
+      lctx.clearRect(0, 0, cw, ch);
+      drawLogo(lctx, cw, ch, performance.now(), prefs.tape);
+      requestAnimationFrame(paint);
+    };
+    paint();
+  }
+  homeStage.resize();
+  $('#home-tag').textContent = TAGLINES[Math.floor(Math.random() * TAGLINES.length)];
+  seedHomeGarden();
+  refreshHomeStats();
+}
+
+// A little garden grows itself across the bottom, then starts over.
+function seedHomeGarden() {
+  clearInterval(homeSeeded);
+  const grow = () => {
+    homeStage.plants = [];
+    const n = 5 + Math.floor(Math.random() * 4);
+    for (let i = 0; i < n; i++) {
+      const rows = 6 + Math.floor(Math.random() * 13);   // short, so it frames rather than covers
+      homeStage.plants.push({
+        x: 0.06 + (i + Math.random() * 0.6) * (0.88 / n), rows, type: pickPlant(rows),
+        t: 0, seed: Math.random() * 6.28, _t0: performance.now() + i * 260,
+      });
+    }
+  };
+  grow();
+  homeSeeded = setInterval(grow, 9000);
+}
+
+async function refreshHomeStats() {
+  let gardens = [];
+  try { gardens = await Store.list(); } catch (err) { return; }
+  const plants = gardens.reduce((n, g) => n + (g.plants || []).length, 0);
+  const waiting = gardens.filter((g) => (g.mine
+    ? (g.reactionCount || 0) && !g.reactionsSeenAt
+    : !g.seenAt)).length;
+  $('#home-gardens').textContent = waiting ? `gardens · ${waiting} new` : `gardens (${gardens.length})`;
+  $('#home-gardens').classList.toggle('primary', waiting > 0);
+  $('#home-stats').textContent = gardens.length
+    ? `${gardens.length} garden${gardens.length === 1 ? '' : 's'} · ${plants} plants grown`
+    : 'no gardens yet';
+}
+
 /* ── gardens ──────────────────────────────────────────────────────── */
 
 async function openInbox() {
@@ -274,6 +345,19 @@ async function openInbox() {
       <span class="sub">${when} · ${(g.plants || []).length} plants · ${n} reactions${unread ? ' · NEW' : ''}</span></span>
       <span class="grow">${g.mine ? '🌷' : '🎙️'}</span>`;
     b.onclick = () => openGarden(g.id);
+    if (g.mine) {
+      const bin = document.createElement('button');
+      bin.className = 'card-bin';
+      bin.textContent = 'delete';
+      arm(bin, 'delete', 'sure?', async () => {
+        try { await Store.remove(g); openInbox(); }
+        catch (err) { bin.textContent = 'failed'; }
+      });
+      const side = document.createElement('span');
+      side.className = 'card-side';
+      side.append(bin, b.lastElementChild);
+      b.appendChild(side);
+    }
     $('#inbox-list').appendChild(b);
   }
 }
@@ -318,6 +402,17 @@ async function openGarden(id) {
     ? 'pick a sticker, then tap the garden to stamp it at that moment'
     : `${g.reactions.length} reaction${g.reactions.length === 1 ? '' : 's'} — press play to watch them land`;
   if (canReact) buildDeck();
+
+  const bin = $('#g-bin');
+  bin.classList.toggle('hidden', !g.mine);
+  bin.textContent = '🗑';
+  bin.classList.remove('armed');
+  if (g.mine) arm(bin, '🗑', 'delete?', async () => {
+    audio.pause();
+    try { await Store.remove(g); openInbox(); }
+    catch (err) { bin.textContent = 'failed'; }
+  });
+
   Store.seen(id, canReact ? 'recipient' : 'author').catch(() => {});
 }
 
@@ -392,6 +487,30 @@ function ticks() {
   ].join('');
 }
 
+// Two taps to delete, rather than a dialog: the second tap within four
+// seconds does it, and it disarms itself if you walk away.
+function arm(btn, idle, confirm, run) {
+  let armed = false, timer = 0;
+  btn.onclick = (e) => {
+    e.stopPropagation();
+    if (armed) {
+      clearTimeout(timer);
+      armed = false;
+      btn.classList.remove('armed');
+      run();
+      return;
+    }
+    armed = true;
+    btn.textContent = confirm;
+    btn.classList.add('armed');
+    timer = setTimeout(() => {
+      armed = false;
+      btn.textContent = idle;
+      btn.classList.remove('armed');
+    }, 4000);
+  };
+}
+
 /* ── customise ────────────────────────────────────────────────────── */
 
 let setTape = null;
@@ -463,22 +582,26 @@ $('#done-send').onclick = async () => {
   try {
     await Store.create({ mime: draft.mime, durationMs: draft.durationMs, plants: draft.plants }, draft.blob);
     draft = null;
-    openInbox();
+    openHome();
   } catch (err) {
     $('#done-err').textContent = 'could not send: ' + err.message;
     $('#done-send').disabled = false;
   }
 };
-$('#done-trash').onclick = () => { draft = null; openInbox(); };
+$('#done-trash').onclick = () => { draft = null; openHome(); };
 $('#inbox-new').onclick = openRecord;
+$('#inbox-back').onclick = openHome;
+$('#home-yap').onclick = openRecord;
+$('#home-gardens').onclick = openInbox;
+$('#home-cog').onclick = openSettings;
 $('#inbox-cog').onclick = openSettings;
 $('#set-close').onclick = () => $('#s-settings').classList.add('hidden');
-$('#rec-back').onclick = () => { (media.rec && media.rec.state === 'recording') ? stopRec() : openInbox(); };
+$('#rec-back').onclick = () => { (media.rec && media.rec.state === 'recording') ? stopRec() : openHome(); };
 $('#g-back').onclick = () => { audio.pause(); openInbox(); };
 
 $('#gate-go').onclick = async () => {
   Store.setPass($('#gate-input').value.trim());
-  try { await Store.list(); openInbox(); }
+  try { await Store.list(); openHome(); }
   catch (err) { $('#gate-err').textContent = 'nope, try again'; }
 };
 $('#signin-go').onclick = async () => {
@@ -498,16 +621,16 @@ $('#signin-out').onclick = async () => { await Store.signOut(); show('signin'); 
 
 async function boot() {
   if (Store.needsAuth) {
-    Store.onAuthChange((session) => { if (session) openInbox(); });
+    Store.onAuthChange((session) => { if (session) openHome(); });
     if (!(await Store.session())) return show('signin');
     $('#signin-out').classList.remove('hidden');
-    return openInbox();
+    return openHome();
   }
   const { needsPass } = await fetch('/api/config').then((r) => r.json()).catch(() => ({ needsPass: false }));
   if (needsPass) {
     try { await Store.list(); } catch (err) { return show('gate'); }
   }
-  openInbox();
+  openHome();
 }
 
 boot();

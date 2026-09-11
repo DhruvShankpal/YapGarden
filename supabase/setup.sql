@@ -63,6 +63,9 @@ create policy gardens_read   on public.gardens for select using (public.is_membe
 create policy gardens_write  on public.gardens for insert with check (public.is_member() and author = auth.uid());
 create policy gardens_update on public.gardens for update using (public.is_member()) with check (public.is_member());
 
+drop policy if exists gardens_delete on public.gardens;
+create policy gardens_delete on public.gardens for delete using (public.is_member() and author = auth.uid());
+
 drop policy if exists reactions_read  on public.reactions;
 drop policy if exists reactions_write on public.reactions;
 create policy reactions_read  on public.reactions for select using (public.is_member());
@@ -79,6 +82,9 @@ create policy gardens_audio_read  on storage.objects for select
   using (bucket_id = 'gardens' and public.is_member());
 create policy gardens_audio_write on storage.objects for insert
   with check (bucket_id = 'gardens' and public.is_member());
+drop policy if exists gardens_audio_delete on storage.objects;
+create policy gardens_audio_delete on storage.objects for delete
+  using (bucket_id = 'gardens' and public.is_member());
 
 -- ── who is allowed in ───────────────────────────────────────────────
 insert into public.members (email) values

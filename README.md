@@ -186,8 +186,20 @@ add `keepBackground: true` to its entry and it is left alone.
 Both show up in **customise** (the cog on the gardens screen). Choices are
 per-device, so you and they can run completely different looks.
 
+## Deleting a yap
+
+Either from the gardens list or from the yap itself. It takes two taps — the
+first arms the button, the second does it, and it disarms itself after four
+seconds. The recording and every reaction on it go too. You can only delete
+your own; the database enforces that, not just the interface.
+
 ## If you set Supabase up before the neutral rewrite
 
-Run `supabase/migrate-01-neutral.sql` once. It drops the two role columns —
-who sent a garden is now just its author, and "yours" versus "theirs" is
-worked out from who is signed in.
+Run these once, in order, in the SQL editor:
+
+- `supabase/migrate-01-neutral.sql` — drops the two role columns. Who sent a
+  garden is now just its author, and "yours" versus "theirs" is worked out
+  from who is signed in.
+- `supabase/migrate-02-delete.sql` — adds the delete policies. Without it the
+  delete button fails silently, because row-level security refuses the delete
+  and reports no error.

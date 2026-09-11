@@ -13,6 +13,7 @@
 </head>
 <body>
 
+<canvas id="stage-home" class="stage hidden"></canvas>
 <canvas id="stage-record" class="stage hidden"></canvas>
 <canvas id="stage-play" class="stage hidden"></canvas>
 
@@ -34,6 +35,23 @@
   <input id="gate-input" class="px-input" type="password" placeholder="passcode" autocomplete="current-password">
   <button id="gate-go" class="px-btn">open</button>
   <p id="gate-err" class="small err"></p>
+</section>
+
+<!-- home -->
+<section id="s-home" class="screen home hidden">
+  <div class="home-top">
+    <canvas id="home-logo" class="logo"></canvas>
+    <h1>grow it out</h1>
+    <p id="home-tag" class="small dim"></p>
+  </div>
+  <div class="home-actions">
+    <button id="home-yap" class="px-btn huge">🎙️ yap about it</button>
+    <div class="home-row">
+      <button id="home-gardens" class="px-btn small-btn">gardens</button>
+      <button id="home-cog" class="px-icon" aria-label="customise">⚙</button>
+    </div>
+    <p id="home-stats" class="foot"></p>
+  </div>
 </section>
 
 <!-- record -->
@@ -65,7 +83,10 @@
 <!-- gardens -->
 <section id="s-inbox" class="screen hidden">
   <div class="list-head">
-    <h2>gardens</h2>
+    <div class="head-btns">
+      <button id="inbox-back" class="px-icon" aria-label="home">←</button>
+      <h2>gardens</h2>
+    </div>
     <div class="head-btns">
       <button id="inbox-cog" class="px-icon" aria-label="customise">⚙</button>
       <button id="inbox-new" class="px-btn small-btn">+ yap</button>
@@ -80,7 +101,10 @@
 <section id="s-garden" class="screen hidden">
   <div class="bar top">
     <button id="g-back" class="px-icon" aria-label="back">←</button>
-    <span id="g-meta" class="badge"></span>
+    <span class="head-btns">
+      <span id="g-meta" class="badge"></span>
+      <button id="g-bin" class="px-icon danger hidden" aria-label="delete this yap">🗑</button>
+    </span>
   </div>
   <div class="bar bottom player">
     <canvas id="g-tape" class="tape" tabindex="0" role="button" aria-label="play or pause"></canvas>
@@ -113,6 +137,7 @@
 <script src="sprites.js"></script>
 <script src="scenes.js"></script>
 <script src="cassette.js"></script>
+<script src="logo.js"></script>
 <script src="stickers.js"></script>
 <script src="assets.js"></script>
 <script src="config.js"></script>

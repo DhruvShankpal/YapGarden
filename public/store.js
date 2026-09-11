@@ -174,6 +174,15 @@ export const Store = {
     if (error) throw new Error(error.message);
   },
 
+  // Delete a garden and its recording. Reactions go with it, by cascade.
+  async remove(garden) {
+    if (!useSupabase) return api('/gardens/' + garden.id, { method: 'DELETE' });
+    const s = await client();
+    const { error } = await s.from('gardens').delete().eq('id', garden.id);
+    if (error) throw new Error(error.message);
+    if (garden.audioPath) await s.storage.from(BUCKET).remove([garden.audioPath]);
+  },
+
   async seen(gardenId, which) {
     if (!useSupabase) return api(`/gardens/${gardenId}/seen`, { method: 'POST', body: JSON.stringify({ which }) });
     const s = await client();

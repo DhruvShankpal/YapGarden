@@ -116,3 +116,25 @@ a { color: var(--pink); }
 .swatches.wide button { width: auto; height: auto; border-radius: 0; font-size: 9px;
   padding: 9px 11px; background: #17121f; color: var(--ink); }
 .swatches.wide button.on { border-color: var(--pink); background: #2a1530; }
+
+/* home */
+.screen.home { justify-content: center; align-items: center; text-align: center; gap: 30px;
+  padding-block: max(28px, env(safe-area-inset-top)) max(28px, env(safe-area-inset-bottom)); }
+.home-top { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+/* leave the bottom band clear for the garden growing behind */
+.home-actions { margin-bottom: 92px; }
+.logo { width: min(190px, 52vw); height: min(190px, 52vw); display: block; }
+.home-actions { display: flex; flex-direction: column; align-items: center; gap: 12px; width: 100%; margin-bottom: 92px; }
+.home-row { display: flex; gap: 10px; align-items: center; }
+.px-btn.huge { font-size: 13px; padding: 18px 22px; min-width: min(280px, 84vw);
+  background: #2a1530; border-color: var(--pink); color: var(--pink); }
+.screen.home h1 { text-shadow: 3px 3px 0 #000; }
+.screen.home p { text-shadow: 2px 2px 0 rgba(0,0,0,.85); }
+
+/* delete */
+.px-icon.danger { border-color: #7a2b33; color: #ff9a9a; }
+.px-icon.danger.armed { border-color: #ff5b5b; color: #ff5b5b; background: #3a1016; }
+.card-bin { font-family: inherit; font-size: 9px; background: transparent; border: 2px solid var(--line);
+  color: var(--dim); padding: 6px 8px; }
+.card-bin.armed { border-color: #ff5b5b; color: #ff5b5b; }
+.card-side { display: flex; align-items: center; gap: 8px; }

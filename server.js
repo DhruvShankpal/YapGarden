@@ -154,6 +154,13 @@ const server = http.createServer(async (req, res) => {
 
       if (!sub && req.method === 'GET') return json(res, 200, { garden: publicGarden(g) });
 
+      if (!sub && req.method === 'DELETE') {
+        if (g.audioFile) { try { fs.unlinkSync(path.join(AUDIO, g.audioFile)); } catch (e) {} }
+        db.gardens = db.gardens.filter((x) => x.id !== id);
+        saveDb(db);
+        return json(res, 200, { ok: true });
+      }
+
       // POST /api/gardens/:id/reactions — { kind, emoji, t, x, y, from }
       if (sub === '/reactions' && req.method === 'POST') {
         const b = JSON.parse((await readBody(req)).toString('utf8'));
