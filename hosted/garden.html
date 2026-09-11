@@ -410,11 +410,41 @@ $('#stage').addEventListener('pointerdown', (e) => {
   $('#b-chip').textContent = stage.plants.length + ' planted';
 });
 
+const esc = (s) => String(s).replace(/[<>&]/g, (c) => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
+
+function micTrouble(name, detail) {
+  // Say which of the several "no mic" causes this actually is.
+  const framed = window.self !== window.top;
+  let policy = null;
+  try { policy = document.featurePolicy ? document.featurePolicy.allowsFeature('microphone') : null; } catch (e) {}
+  let fix;
+  if (policy === false || (name === 'NotAllowedError' && framed)) {
+    fix = "this page is embedded inside another page, and that page has to hand over microphone access. it hasn't \u2014 so recording can't work here. open it outside the embed to yap.";
+  } else if (name === 'NotAllowedError') {
+    fix = 'your browser blocked the mic. allow the microphone in this site\u2019s permissions, then tap yap again.';
+  } else if (name === 'NotFoundError' || name === 'OverconstrainedError') {
+    fix = 'no microphone found on this device.';
+  } else if (name === 'NotReadableError') {
+    fix = 'something else is using the microphone. close it and try again.';
+  } else if (name === 'unsupported') {
+    fix = 'this browser cannot record audio \u2014 no MediaRecorder.';
+  } else {
+    fix = 'unexpected \u2014 ' + esc(detail || 'no detail');
+  }
+  $('#hint').style.display = 'flex';
+  $('#hint').innerHTML = '<p class="big">no mic \u{1F610}</p><p class="lede">' + fix + '</p>'
+    + '<p class="lede" style="font-size:12px;opacity:.75">' + esc(name)
+    + (framed ? ' \u00b7 embedded' : ' \u00b7 top-level')
+    + (policy === null ? '' : ' \u00b7 mic policy: ' + (policy ? 'allowed' : 'blocked')) + '</p>';
+}
+
 async function startRec() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder) {
+    return micTrouble('unsupported', '');
+  }
   try { media.stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
   catch (err) {
-    $('#hint').style.display = 'flex';
-    $('#hint').innerHTML = '<p class="big">no mic 😐</p><p class="lede">allow microphone access in your browser, then tap yap again.</p>';
+    micTrouble((err && err.name) || 'Error', (err && err.message) || '');
     return;
   }
   media.mime = pickMime(); media.chunks = [];
