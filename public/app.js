@@ -1,27 +1,18 @@
 /* grow it out — MVP client */
 
+import { Store } from './store.js';
+
 const $ = (s) => document.querySelector(s);
-const SCREENS = ['gate', 'pick', 'record', 'done', 'inbox', 'garden'];
+const SCREENS = ['gate', 'signin', 'pick', 'record', 'done', 'inbox', 'garden'];
 const show = (name) => SCREENS.forEach((s) => $('#s-' + s).classList.toggle('hidden', s !== name));
 
 let ME = localStorage.getItem('yg.me') || '';
-let PASS = localStorage.getItem('yg.pass') || '';
 const other = (who) => (who === 'her' ? 'him' : 'her');
-const NAME = { her: 'her', him: 'you' };
 
 const fmt = (ms) => {
   const s = Math.max(0, Math.floor(ms / 1000));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 };
-
-async function api(path, opts = {}) {
-  const res = await fetch('/api' + path, {
-    ...opts,
-    headers: { 'content-type': 'application/json', ...(PASS ? { 'x-garden-pass': PASS } : {}), ...(opts.headers || {}) },
-  });
-  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || res.status);
-  return res.json();
-}
 
 /* ─────────────────────────── the garden canvas ─────────────────────────── */
 
@@ -255,24 +246,12 @@ function showDone() {
   $('#done-send').disabled = false;
 }
 
-const toBase64 = (blob) => new Promise((resolve, reject) => {
-  const fr = new FileReader();
-  fr.onload = () => resolve(String(fr.result).split(',')[1]);
-  fr.onerror = reject;
-  fr.readAsDataURL(blob);
-});
-
 async function sendDraft() {
   $('#done-send').disabled = true;
   $('#done-err').textContent = 'sending…';
   try {
-    await api('/gardens', {
-      method: 'POST',
-      body: JSON.stringify({
-        from: ME, to: other(ME), mime: draft.mime, durationMs: draft.durationMs,
-        plants: draft.plants, audioBase64: await toBase64(draft.blob),
-      }),
-    });
+    await Store.create({ from: ME, to: other(ME), mime: draft.mime,
+      durationMs: draft.durationMs, plants: draft.plants }, draft.blob);
     draft = null;
     openInbox();
   } catch (err) {
@@ -295,7 +274,7 @@ async function openInbox() {
 
 async function refreshInbox() {
   let gardens = [];
-  try { ({ gardens } = await api('/gardens?who=' + ME)); } catch (err) { /* offline: keep what's there */ }
+  try { gardens = await Store.list(); } catch (err) { /* offline: keep what's there */ }
   const list = $('#inbox-list');
   if (!gardens.length) {
     list.innerHTML = '<p class="small dim">nothing here yet. go yap about something.</p>';
@@ -304,13 +283,14 @@ async function refreshInbox() {
   list.innerHTML = '';
   for (const g of gardens) {
     const mine = g.from === ME;
-    const unread = mine ? (g.reactions.length && !g.reactionsSeenAt) : !g.seenAt;
+    const nReact = g.reactionCount != null ? g.reactionCount : (g.reactions || []).length;
+    const unread = mine ? (nReact && !g.reactionsSeenAt) : !g.seenAt;
     const el = document.createElement('div');
     el.className = 'card' + (unread ? ' unread' : '');
     const when = new Date(g.createdAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
     el.innerHTML = `<div>
         <div class="title">${mine ? 'you yapped' : 'she yapped'} ${fmt(g.durationMs)}</div>
-        <div class="sub">${when} · ${g.plants.length} plants · ${g.reactions.length} reactions${unread ? ' · NEW' : ''}</div>
+        <div class="sub">${when} · ${g.plants.length} plants · ${nReact} reactions${unread ? ' · NEW' : ''}</div>
       </div><div class="grow">${mine ? '🌷' : '🎙️'}</div>`;
     el.onclick = () => openGarden(g.id);
     list.appendChild(el);
@@ -332,7 +312,8 @@ let current = null;
 let picked = null;
 
 async function openGarden(id) {
-  const { garden } = await api('/gardens/' + id);
+  const garden = await Store.get(id);
+  if (!garden) return;
   current = garden;
   picked = null;
   show('garden');
@@ -344,7 +325,7 @@ async function openGarden(id) {
   playStage.setGarden(garden);
 
   const audio = $('#g-audio');
-  audio.src = '/api/audio/' + id;
+  audio.src = garden.audioUrl || '';
   audio.currentTime = 0;
   $('#g-play').textContent = '▶';
   $('#g-meta').textContent = `${garden.from === ME ? 'you' : 'her'} · ${fmt(garden.durationMs)} · ${garden.plants.length}🌱`;
@@ -359,7 +340,7 @@ async function openGarden(id) {
     : `${garden.reactions.length} reaction${garden.reactions.length === 1 ? '' : 's'} — press play to watch them land`;
   if (amRecipient) buildDeck();
 
-  api(`/gardens/${id}/seen`, { method: 'POST', body: JSON.stringify({ which: amRecipient ? 'recipient' : 'author' }) }).catch(() => {});
+  Store.seen(id, amRecipient ? 'recipient' : 'author').catch(() => {});
 }
 
 function buildDeck() {
@@ -398,7 +379,7 @@ async function onStageTapReact(e) {
   playStage.reactions.push(local);
   current.reactions.push(local);
   renderTicks();
-  try { await api(`/gardens/${current.id}/reactions`, { method: 'POST', body: JSON.stringify(r) }); }
+  try { await Store.react(current.id, r); }
   catch (err) { $('#g-deckhint').textContent = 'reaction did not save 😔'; }
 }
 
@@ -420,7 +401,7 @@ function wirePlayer() {
   // a silent dead play button, hand over the file.
   audio.onerror = () => {
     if (!current) return;
-    $('#g-deckhint').innerHTML = `this browser won't play that recording — <a href="/api/audio/${current.id}" download>download it instead</a>`;
+    $('#g-deckhint').innerHTML = `this browser won't play that recording — <a href="${current.audioUrl}" download>download it instead</a>`;
   };
   audio.ontimeupdate = () => {
     const ms = audio.currentTime * 1000;
@@ -450,13 +431,27 @@ async function boot() {
   wirePlayer();
 
   $('#gate-go').onclick = async () => {
-    PASS = $('#gate-input').value.trim();
+    Store.setPass($('#gate-input').value.trim());
     try {
-      await api('/gardens?who=her');
-      localStorage.setItem('yg.pass', PASS);
+      await Store.list();
       ME ? openInbox() : show('pick');
     } catch (err) { $('#gate-err').textContent = 'nope, try again'; }
   };
+
+  $('#signin-go').onclick = async () => {
+    const email = $('#signin-input').value.trim();
+    if (!email) return;
+    $('#signin-go').disabled = true;
+    $('#signin-msg').textContent = 'sending…';
+    try {
+      await Store.signIn(email);
+      $('#signin-msg').textContent = 'check your email — tap the link on this device.';
+    } catch (err) {
+      $('#signin-msg').textContent = err.message;
+      $('#signin-go').disabled = false;
+    }
+  };
+  $('#signin-out').onclick = async () => { await Store.signOut(); show('signin'); };
   document.querySelectorAll('.pick').forEach((b) => { b.onclick = () => setMe(b.dataset.me); });
   $('#inbox-new').onclick = openRecord;
   $('#inbox-switch').onclick = () => { localStorage.removeItem('yg.me'); ME = ''; show('pick'); };
@@ -469,9 +464,17 @@ async function boot() {
   $('#done-trash').onclick = () => { draft = null; openInbox(); };
   $('#g-back').onclick = () => { $('#g-audio').pause(); openInbox(); };
 
-  const { needsPass } = await api('/config').catch(() => ({ needsPass: false }));
+  if (Store.needsAuth) {
+    // Magic-link sign-in: only the emails in the members table can read anything.
+    Store.onAuthChange((session) => { if (session) (ME ? openInbox() : show('pick')); });
+    const session = await Store.session();
+    if (!session) return show('signin');
+    $('#signin-out').classList.remove('hidden');
+    return ME ? openInbox() : show('pick');
+  }
+  const { needsPass } = await fetch('/api/config').then((r) => r.json()).catch(() => ({ needsPass: false }));
   if (needsPass) {
-    try { await api('/gardens?who=her'); } catch (err) { return show('gate'); }
+    try { await Store.list(); } catch (err) { return show('gate'); }
   }
   ME ? openInbox() : show('pick');
 }

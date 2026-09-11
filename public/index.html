@@ -13,6 +13,17 @@
 </head>
 <body>
 
+<!-- sign in (hosted build only) -->
+<section id="s-signin" class="screen center hidden">
+  <div class="plant-mark">🌱</div>
+  <h1>grow it out</h1>
+  <p class="small dim">just the two of you. sign in with your email.</p>
+  <input id="signin-input" class="px-input" type="email" inputmode="email"
+         autocomplete="email" placeholder="you@email.com">
+  <button id="signin-go" class="px-btn">send me a link</button>
+  <p id="signin-msg" class="small"></p>
+</section>
+
 <!-- passcode gate (only if GARDEN_PASS is set on the server) -->
 <section id="s-gate" class="screen center hidden">
   <div class="plant-mark">🌱</div>
@@ -68,6 +79,7 @@
   </div>
   <div id="inbox-list" class="list"></div>
   <button id="inbox-switch" class="px-btn ghost small-btn">switch person</button>
+  <button id="signin-out" class="px-btn ghost small-btn hidden">sign out</button>
 </section>
 
 <!-- playback + reactions -->
@@ -90,6 +102,7 @@
 </section>
 
 <script src="sprites.js"></script>
-<script src="app.js"></script>
+<script src="config.js"></script>
+<script type="module" src="app.js"></script>
 </body>
 </html>

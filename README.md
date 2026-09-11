@@ -62,6 +62,35 @@ that tiles downward as far as the tap asked for, so a single sprite covers every
 height. Columns 4–5 are the stem so procedural leaves attach correctly. Keep rows
 9 characters wide, add colours to `PAL`, and the rest of the app doesn't change.
 
+## Putting it on the web (GitHub Pages + Supabase)
+
+GitHub Pages serves static files, so it can host the front-end but cannot store
+audio. Supabase's free tier covers the rest: Postgres for the gardens and a
+private bucket for the recordings. Together they give you a permanent HTTPS
+link that works on any phone, with no server of your own to run.
+
+Setup, once:
+
+1. **Make a Supabase project** at supabase.com (free, no card).
+2. **Run the schema.** SQL editor → paste all of `supabase/setup.sql` → Run.
+   Edit the two emails at the bottom first: those, and only those, can read
+   or write anything.
+3. **Paste your keys** into `public/config.js` — `supabaseUrl` and
+   `supabaseAnonKey` from Settings → Data API. Both are safe to commit: the
+   anon key is meant to be public, and row-level security is what actually
+   guards the data.
+4. **Allow the redirect.** Authentication → URL Configuration → add your Pages
+   URL (`https://<you>.github.io/YapGarden/`) to Redirect URLs, or the sign-in
+   link will bounce you somewhere else.
+5. **Push.** The workflow in `.github/workflows/pages.yml` deploys `public/` on
+   every push to `main` and switches Pages on the first time it runs.
+
+Signing in is a magic link: type your email, tap the link in the message **on
+the same device**. No passwords.
+
+To go back to the local server, blank out the two values in `config.js` — the
+same front-end then talks to `server.js` again.
+
 ## Phones
 
 It's a web app, so Samsung and iPhone both just open the URL — no app store, no
