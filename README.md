@@ -173,6 +173,16 @@ stickers: [
 Stickers appear at the front of the reaction deck and get stamped onto the
 garden like the emoji do.
 
+They are cleaned up in the browser as they load, because the pixel art people
+actually have to hand is usually a screenshot of a chart: a JPEG, on white,
+with a ruled grid over it. Each one is shrunk (which blends the ruling away),
+has its page background cleared by a flood fill from the edges, and is trimmed
+to its content. Colour *inside* the drawing survives, since the outline stops
+the fill reaching it. Transparent PNGs skip all of this and look better still.
+
+If a sticker's background is meant to be there — art on a solid colour, say —
+add `keepBackground: true` to its entry and it is left alone.
+
 Both show up in **customise** (the cog on the gardens screen). Choices are
 per-device, so you and they can run completely different looks.
 

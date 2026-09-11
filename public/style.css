@@ -85,7 +85,9 @@ button:focus-visible, .tape:focus-visible, .card:focus-visible { outline: 3px so
   color: var(--ink); border: 2px solid var(--line); padding: 6px 8px; }
 .deck button.txt { font-size: 8px; line-height: 1.4; max-width: 150px; }
 .deck button.on { border-color: var(--pink); background: #2a1530; }
-.deck img { width: 26px; height: 26px; display: block; image-rendering: pixelated; }
+.deck button.pic { padding: 4px; }
+.deck .slot { display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; }
+.deck .slot canvas { image-rendering: pixelated; }
 
 /* gardens */
 .list-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; }

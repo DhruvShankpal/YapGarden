@@ -116,11 +116,13 @@ class Stage {
     ctx.globalAlpha = 0.35 + 0.65 * pop;
     ctx.textAlign = 'center';
     if (r.kind === 'sticker') {
-      let img = this.images['st:' + r.emoji];
-      const meta = (window.YAP_ASSETS.stickers || []).find((s) => s.id === r.emoji);
-      if (!img && meta) { img = this.images['st:' + r.emoji] = new Image(); img.src = meta.src; }
-      const size = 42 * (0.6 + 0.4 * pop);
-      if (img && img.complete && img.naturalWidth) ctx.drawImage(img, x - size / 2, y - size / 2, size, size);
+      const art = getSticker(r.emoji);
+      if (art) {
+        const size = 46 * (0.6 + 0.4 * pop);
+        const k = size / Math.max(art.width, art.height);
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(art, x - art.width * k / 2, y - art.height * k / 2, art.width * k, art.height * k);
+      }
     } else if (r.kind === 'text' || SAYINGS[r.emoji]) {
       ctx.font = '9px "Press Start 2P", monospace';
       const tw = ctx.measureText(r.emoji).width, pad = 7;
@@ -334,7 +336,13 @@ function buildDeck() {
   };
   for (const s of stickers) {
     const b = document.createElement('button');
-    b.innerHTML = `<img src="${s.src}" alt="${esc(s.label || s.id)}">`;
+    b.className = 'pic';
+    b.title = s.label || s.id;
+    b.setAttribute('aria-label', s.label || s.id);
+    const slot = document.createElement('span');
+    slot.className = 'slot';
+    b.appendChild(slot);
+    paintThumb(slot, s.id);
     add(b, { emoji: s.id, kind: 'sticker' });
   }
   for (const group of DECK) for (const item of group.items) {
@@ -343,6 +351,23 @@ function buildDeck() {
     if (isText) b.className = 'txt';
     b.textContent = item;
     add(b, { emoji: item, kind: isText ? 'text' : 'emoji' });
+  }
+}
+
+// getSticker returns null until the image has loaded and been cleaned.
+function paintThumb(slot, id, tries = 0) {
+  const art = getSticker(id);
+  if (art) {
+    const k = 30 / Math.max(art.width, art.height);
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(art.width * k));
+    c.height = Math.max(1, Math.round(art.height * k));
+    const cx = c.getContext('2d');
+    cx.imageSmoothingEnabled = false;
+    cx.drawImage(art, 0, 0, c.width, c.height);
+    slot.replaceChildren(c);
+  } else if (tries < 40) {
+    setTimeout(() => paintThumb(slot, id, tries + 1), 100);
   }
 }
 
