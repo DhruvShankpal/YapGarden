@@ -19,8 +19,10 @@ async function client() {
 }
 
 // The database speaks snake_case; the app speaks camelCase.
+let myUid = null;
+
 const fromRow = (row) => ({
-  id: row.id, from: row.from_role, to: row.to_role,
+  id: row.id, mine: row.author === myUid,
   createdAt: new Date(row.created_at).getTime(),
   durationMs: row.duration_ms, mime: row.mime, audioPath: row.audio_path,
   plants: row.plants || [], seenAt: row.seen_at, reactionsSeenAt: row.reactions_seen_at,
@@ -31,8 +33,18 @@ const fromRow = (row) => ({
 });
 const reactionFromRow = (row) => ({
   id: row.id, emoji: row.emoji, kind: row.kind, t: row.t,
-  x: row.x, y: row.y, from: row.from_role, createdAt: new Date(row.created_at).getTime(),
+  x: row.x, y: row.y, mine: row.author === myUid,
+  createdAt: new Date(row.created_at).getTime(),
 });
+
+// Local mode has no accounts, so a per-device id stands in for one.
+function deviceId() {
+  try {
+    let id = localStorage.getItem('gio.device');
+    if (!id) { id = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random())); localStorage.setItem('gio.device', id); }
+    return id;
+  } catch (e) { return 'device'; }
+}
 
 /* ── local node server ────────────────────────────────────────────── */
 
@@ -63,17 +75,23 @@ export const Store = {
 
   setPass(p) { PASS = p; try { localStorage.setItem('yg.pass', p); } catch (e) {} },
 
+  note: '',
+
   async session() {
     if (!useSupabase) return { email: null };
     const s = await client();
     const { data } = await s.auth.getSession();
+    myUid = data.session ? data.session.user.id : null;
     return data.session ? { email: data.session.user.email } : null;
   },
 
   async onAuthChange(cb) {
     if (!useSupabase) return;
     const s = await client();
-    s.auth.onAuthStateChange((_e, sess) => cb(sess ? { email: sess.user.email } : null));
+    s.auth.onAuthStateChange((_e, sess) => {
+      myUid = sess ? sess.user.id : null;
+      cb(sess ? { email: sess.user.email } : null);
+    });
   },
 
   async signIn(email) {
@@ -94,8 +112,10 @@ export const Store = {
   async list() {
     if (!useSupabase) {
       const { gardens } = await api('/gardens');
-      return gardens;
+      const me = deviceId();
+      return gardens.map((g) => ({ ...g, mine: g.author === me }));
     }
+    if (!myUid) await this.session();
     const s = await client();
     const { data, error } = await s.from('gardens').select('*, reactions(count)').order('created_at', { ascending: false }).limit(50);
     if (error) throw new Error(error.message);
@@ -106,6 +126,7 @@ export const Store = {
     if (!useSupabase) {
       const { garden } = await api('/gardens/' + id);
       garden.audioUrl = '/api/audio/' + id;
+      garden.mine = garden.author === deviceId();
       return garden;
     }
     const s = await client();
@@ -125,7 +146,7 @@ export const Store = {
     if (!useSupabase) {
       const { garden } = await api('/gardens', {
         method: 'POST',
-        body: JSON.stringify({ ...g, audioBase64: await toBase64(blob) }),
+        body: JSON.stringify({ ...g, author: deviceId(), audioBase64: await toBase64(blob) }),
       });
       return garden.id;
     }
@@ -135,8 +156,7 @@ export const Store = {
     const up = await s.storage.from(BUCKET).upload(path, blob, { contentType: g.mime, upsert: false });
     if (up.error) throw new Error('audio upload failed: ' + up.error.message);
     const { error } = await s.from('gardens').insert({
-      id, from_role: g.from, to_role: g.to, duration_ms: g.durationMs,
-      mime: g.mime, audio_path: path, plants: g.plants,
+      id, duration_ms: g.durationMs, mime: g.mime, audio_path: path, plants: g.plants,
     });
     if (error) {
       await s.storage.from(BUCKET).remove([path]);   // don't leave the audio orphaned
@@ -146,10 +166,10 @@ export const Store = {
   },
 
   async react(gardenId, r) {
-    if (!useSupabase) return api(`/gardens/${gardenId}/reactions`, { method: 'POST', body: JSON.stringify(r) });
+    if (!useSupabase) return api(`/gardens/${gardenId}/reactions`, { method: 'POST', body: JSON.stringify({ ...r, author: deviceId() }) });
     const s = await client();
     const { error } = await s.from('reactions').insert({
-      garden_id: gardenId, emoji: r.emoji, kind: r.kind, t: r.t, x: r.x, y: r.y, from_role: r.from,
+      garden_id: gardenId, emoji: r.emoji, kind: r.kind, t: r.t, x: r.x, y: r.y,
     });
     if (error) throw new Error(error.message);
   },

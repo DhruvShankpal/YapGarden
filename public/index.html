@@ -13,18 +13,21 @@
 </head>
 <body>
 
-<!-- sign in (hosted build only) -->
+<canvas id="stage-record" class="stage hidden"></canvas>
+<canvas id="stage-play" class="stage hidden"></canvas>
+
+<!-- sign in (hosted build) -->
 <section id="s-signin" class="screen center hidden">
   <div class="plant-mark">🌱</div>
   <h1>grow it out</h1>
-  <p class="small dim">just the two of you. sign in with your email.</p>
+  <p class="small dim">yap about it. every tap grows a flower.</p>
   <input id="signin-input" class="px-input" type="email" inputmode="email"
          autocomplete="email" placeholder="you@email.com">
   <button id="signin-go" class="px-btn">send me a link</button>
   <p id="signin-msg" class="small"></p>
 </section>
 
-<!-- passcode gate (only if GARDEN_PASS is set on the server) -->
+<!-- passcode gate (local server with GARDEN_PASS set) -->
 <section id="s-gate" class="screen center hidden">
   <div class="plant-mark">🌱</div>
   <p class="small">this garden is private</p>
@@ -33,30 +36,18 @@
   <p id="gate-err" class="small err"></p>
 </section>
 
-<!-- who are you -->
-<section id="s-pick" class="screen center hidden">
-  <div class="plant-mark">🌷</div>
-  <h1>grow it out</h1>
-  <p class="small dim">who's this?</p>
-  <button class="px-btn pick" data-me="her">🌷 i'm the yapper</button>
-  <button class="px-btn pick" data-me="him">🫂 i'm the listener</button>
-  <p class="small dim tiny">both of you can do both. this just picks your inbox.</p>
-</section>
-
 <!-- record -->
 <section id="s-record" class="screen hidden">
-  <canvas id="stage-record" class="stage"></canvas>
-  <div class="overlay top">
-    <button id="rec-back" class="px-icon">←</button>
+  <div class="bar top">
+    <button id="rec-back" class="px-icon" aria-label="back">←</button>
     <span id="rec-count" class="badge">0 planted</span>
   </div>
   <div id="rec-hint" class="hint">
     <p class="big">what happened?</p>
-    <p class="small dim">hit yap. then tap anywhere to grow.</p>
+    <p class="small dim">tap the tape, then tap anywhere to grow</p>
   </div>
-  <div class="overlay bottom">
-    <div id="rec-time" class="timer">0:00</div>
-    <button id="rec-btn" class="px-btn rec">hold to yap</button>
+  <div class="bar bottom">
+    <canvas id="rec-tape" class="tape" tabindex="0" role="button" aria-label="start or stop recording"></canvas>
   </div>
 </section>
 
@@ -71,27 +62,29 @@
   <p id="done-err" class="small err"></p>
 </section>
 
-<!-- list of gardens -->
+<!-- gardens -->
 <section id="s-inbox" class="screen hidden">
   <div class="list-head">
-    <h2 id="inbox-title">gardens</h2>
-    <button id="inbox-new" class="px-btn small-btn">+ yap</button>
+    <h2>gardens</h2>
+    <div class="head-btns">
+      <button id="inbox-cog" class="px-icon" aria-label="customise">⚙</button>
+      <button id="inbox-new" class="px-btn small-btn">+ yap</button>
+    </div>
   </div>
   <div id="inbox-list" class="list"></div>
-  <button id="inbox-switch" class="px-btn ghost small-btn">switch person</button>
+  <p id="inbox-note" class="foot"></p>
   <button id="signin-out" class="px-btn ghost small-btn hidden">sign out</button>
 </section>
 
-<!-- playback + reactions -->
+<!-- playback -->
 <section id="s-garden" class="screen hidden">
-  <canvas id="stage-play" class="stage"></canvas>
-  <div class="overlay top">
-    <button id="g-back" class="px-icon">←</button>
+  <div class="bar top">
+    <button id="g-back" class="px-icon" aria-label="back">←</button>
     <span id="g-meta" class="badge"></span>
   </div>
-  <div class="overlay bottom player">
+  <div class="bar bottom player">
+    <canvas id="g-tape" class="tape" tabindex="0" role="button" aria-label="play or pause"></canvas>
     <div class="row">
-      <button id="g-play" class="px-icon big">▶</button>
       <div id="g-track" class="track"><div id="g-fill" class="fill"></div><div id="g-ticks" class="ticks"></div></div>
       <span id="g-time" class="timer sm">0:00</span>
     </div>
@@ -101,7 +94,26 @@
   <audio id="g-audio" preload="metadata"></audio>
 </section>
 
+<!-- customise -->
+<section id="s-settings" class="sheet hidden">
+  <div class="sheet-inner">
+    <div class="list-head">
+      <h2>customise</h2>
+      <button id="set-close" class="px-icon" aria-label="close">✕</button>
+    </div>
+    <canvas id="set-tape" class="tape preview"></canvas>
+    <p class="label">cassette</p>
+    <div id="set-tapes" class="swatches"></div>
+    <p class="label">background</p>
+    <div id="set-scenes" class="swatches wide"></div>
+    <p class="foot">saved on this device.</p>
+  </div>
+</section>
+
 <script src="sprites.js"></script>
+<script src="scenes.js"></script>
+<script src="cassette.js"></script>
+<script src="assets.js"></script>
 <script src="config.js"></script>
 <script type="module" src="app.js"></script>
 </body>

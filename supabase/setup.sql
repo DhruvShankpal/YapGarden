@@ -1,6 +1,5 @@
 -- Grow it out — Supabase setup.
 -- Paste this whole file into the Supabase SQL editor and run it once.
--- Then edit the two emails at the bottom.
 
 create extension if not exists pgcrypto;
 
@@ -28,8 +27,6 @@ $$;
 
 create table if not exists public.gardens (
   id           uuid primary key default gen_random_uuid(),
-  from_role    text not null check (from_role in ('her','him')),
-  to_role      text not null check (to_role in ('her','him')),
   created_at   timestamptz not null default now(),
   duration_ms  integer not null default 0,
   mime         text not null default 'audio/webm',
@@ -48,7 +45,6 @@ create table if not exists public.reactions (
   t          integer not null default 0,
   x          double precision not null default 0.5,
   y          double precision not null default 0.5,
-  from_role  text not null check (from_role in ('her','him')),
   created_at timestamptz not null default now(),
   author     uuid not null default auth.uid() references auth.users (id) on delete cascade
 );
@@ -89,9 +85,9 @@ insert into public.members (email) values
   ('dhruvshankpal@gmail.com')
 on conflict (email) do nothing;
 
--- When you have her address, run just this line (any provider, not only
--- Gmail). Until then she cannot sign in, but you can test both sides
--- yourself: the yapper/listener choice is per-device, not per-account.
+-- To let someone else in, run just this line with their address (any
+-- provider). Until then they cannot sign in, though you can still record and
+-- play back your own gardens.
 --
---   insert into public.members (email) values ('her@address.com')
+--   insert into public.members (email) values ('their@address.com')
 --   on conflict (email) do nothing;

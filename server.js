@@ -115,10 +115,7 @@ const server = http.createServer(async (req, res) => {
     // GET /api/gardens?to=him  — inbox + sent list
     if (p === '/api/gardens' && req.method === 'GET') {
       const db = loadDb();
-      const who = url.searchParams.get('who');
-      let list = db.gardens;
-      if (who) list = list.filter((g) => g.to === who || g.from === who);
-      return json(res, 200, { gardens: list.map(publicGarden).sort((a, b) => b.createdAt - a.createdAt) });
+      return json(res, 200, { gardens: db.gardens.map(publicGarden).sort((a, b) => b.createdAt - a.createdAt) });
     }
 
     // POST /api/gardens — { from, to, durationMs, mime, plants, audioBase64 }
@@ -132,8 +129,7 @@ const server = http.createServer(async (req, res) => {
       fs.writeFileSync(path.join(AUDIO, audioFile), Buffer.from(body.audioBase64, 'base64'));
       const garden = {
         id,
-        from: body.from === 'him' ? 'him' : 'her',
-        to: body.to === 'her' ? 'her' : 'him',
+        author: String(body.author || 'device').slice(0, 64),
         createdAt: Date.now(),
         durationMs: Math.max(0, Number(body.durationMs) || 0),
         mime,
@@ -163,12 +159,12 @@ const server = http.createServer(async (req, res) => {
         const b = JSON.parse((await readBody(req)).toString('utf8'));
         const r = {
           id: crypto.randomBytes(4).toString('hex'),
-          emoji: String(b.emoji || '').slice(0, 24),
-          kind: b.kind === 'text' ? 'text' : 'emoji',
+          emoji: String(b.emoji || '').slice(0, 64),
+          kind: ['text', 'sticker'].includes(b.kind) ? b.kind : 'emoji',
           t: Math.max(0, Number(b.t) || 0),
           x: Math.min(1, Math.max(0, Number(b.x) || 0.5)),
           y: Math.min(1, Math.max(0, Number(b.y) || 0.5)),
-          from: b.from === 'her' ? 'her' : 'him',
+          author: String(b.author || 'device').slice(0, 64),
           createdAt: Date.now(),
         };
         g.reactions.push(r);

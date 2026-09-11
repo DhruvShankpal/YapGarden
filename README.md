@@ -44,10 +44,13 @@ anyone with the URL can open the gardens.
 | File | What it is |
 | --- | --- |
 | `server.js` | Whole backend. JSON metadata in `data/db.json`, audio blobs in `data/audio/`. Serves byte-range requests, which Safari requires for audio. |
-| `public/sprites.js` | **The art.** Every plant is a grid of characters + a colour palette. This is the file to replace with cuter assets. |
+| `public/sprites.js` | **The plants.** Every one is a grid of characters + a colour palette. |
+| `public/assets.js` | **Your own art.** Point it at files in `public/backgrounds/` and `public/stickers/` and they appear in the app. |
+| `public/scenes.js` | The built-in backgrounds, drawn in code — no image files. |
+| `public/cassette.js` | The tape you tap to start and stop, and its colourways. |
 | `public/app.js` | Recording, the garden canvas, playback, reactions. |
 | `public/style.css` | Chunky pixel styling — hard shadows, no rounded corners. |
-| `hosted/garden.html` | The same app as one self-contained page, storing gardens in a Claude artifact's database instead of the Node server. No server to run; see below. |
+| `hosted/garden.html` | An earlier single-file prototype that stores gardens in a Claude artifact instead. Kept for reference; it does not track the main app. |
 
 ### Swapping in better art
 
@@ -140,3 +143,41 @@ Two limits that do not apply to the Node version:
 
 For two people actually using this, the Node version behind a tunnel is the
 better answer — no access rules in the way.
+
+## Adding your own artwork
+
+No code changes needed — drop files in and list them.
+
+**Backgrounds.** Put an image in `public/backgrounds/`, then add a line to
+`public/assets.js`:
+
+```js
+backgrounds: [
+  { id: 'desert', label: 'desert', src: 'backgrounds/desert.png', soil: 'none' },
+],
+```
+
+It is scaled to cover the screen with smoothing off, so pixel art stays sharp.
+`soil: 'none'` if the picture already has its own ground; otherwise a dark strip
+is drawn along the bottom for the plants to grow out of.
+
+**Stickers.** Put a small square image (transparent background, 64–256px) in
+`public/stickers/`, then:
+
+```js
+stickers: [
+  { id: 'shark', label: 'shark', src: 'stickers/shark.png', group: 'support' },
+],
+```
+
+Stickers appear at the front of the reaction deck and get stamped onto the
+garden like the emoji do.
+
+Both show up in **customise** (the cog on the gardens screen). Choices are
+per-device, so you and they can run completely different looks.
+
+## If you set Supabase up before the neutral rewrite
+
+Run `supabase/migrate-01-neutral.sql` once. It drops the two role columns —
+who sent a garden is now just its author, and "yours" versus "theirs" is
+worked out from who is signed in.

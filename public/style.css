@@ -1,17 +1,18 @@
 :root {
   --ink: #f4e9d8;
-  --dim: #8a7f93;
+  --dim: #9a8fa3;
   --bg: #07060b;
   --pink: #ff7eb6;
   --green: #4e9f3d;
   --line: #2b2536;
+  --panel: #120e1a;
   --pad: 16px;
+  --ui: 'Press Start 2P', ui-monospace, 'Courier New', monospace;
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body {
   margin: 0; height: 100%; background: var(--bg); color: var(--ink);
-  font-family: 'Press Start 2P', ui-monospace, 'Courier New', monospace;
-  font-size: 12px; line-height: 1.8; overscroll-behavior: none;
+  font-family: var(--ui); font-size: 12px; line-height: 1.8; overscroll-behavior: none;
 }
 body { -webkit-user-select: none; user-select: none; }
 h1 { font-size: 20px; margin: 4px 0; color: var(--pink); }
@@ -22,85 +23,94 @@ p { margin: 6px 0; }
 .tiny { font-size: 8px; }
 .big { font-size: 15px; }
 .dim { color: var(--dim); }
-.err { color: #ff6b6b; min-height: 14px; }
+.err { color: #ff7a7a; min-height: 14px; }
+.foot { font-size: 8px; color: var(--dim); text-align: center; }
+.label { font-size: 8px; letter-spacing: 2px; text-transform: uppercase; color: var(--dim);
+  text-align: center; margin: 14px 0 6px; }
 
-.screen {
-  position: fixed; inset: 0; padding: max(var(--pad), env(safe-area-inset-top)) var(--pad)
-    max(var(--pad), env(safe-area-inset-bottom));
-  display: flex; flex-direction: column;
-}
+.stage { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; z-index: 0; }
+
+.screen { position: fixed; inset: 0; z-index: 1; display: flex; flex-direction: column;
+  padding: max(var(--pad), env(safe-area-inset-top)) var(--pad) max(var(--pad), env(safe-area-inset-bottom)); }
 .screen.center { align-items: center; justify-content: center; text-align: center; gap: 6px; }
+/* The record and playback screens are only frames around the canvas — taps must
+   reach the garden behind them, so only their controls take pointer events. */
+#s-record, #s-garden { pointer-events: none; }
+#s-record button, #s-garden button, #s-garden .track, .tape { pointer-events: auto; }
 .plant-mark { font-size: 34px; line-height: 1; }
 
-/* chunky pixel buttons: hard offset shadow, no curves */
-.px-btn {
-  font: inherit; font-size: 11px; color: var(--ink); background: #17121f;
-  border: 2px solid var(--ink); border-radius: 0; padding: 12px 18px; margin: 4px 0;
-  box-shadow: 4px 4px 0 #000; cursor: pointer; min-width: 200px;
-}
+button { font-family: inherit; border-radius: 0; cursor: pointer; }
+.px-btn { font-size: 11px; color: var(--ink); background: #17121f; border: 2px solid var(--ink);
+  padding: 12px 18px; margin: 4px 0; box-shadow: 4px 4px 0 #000; min-width: 200px; }
 .px-btn:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 #000; }
 .px-btn.primary { background: var(--green); border-color: #dff6c9; }
 .px-btn.ghost { background: transparent; border-color: var(--line); color: var(--dim); box-shadow: none; }
 .px-btn.small-btn { min-width: 0; font-size: 9px; padding: 8px 12px; }
-.px-btn.pick { min-width: 240px; }
-.px-btn.rec {
-  background: #2a1530; border-color: var(--pink); color: var(--pink);
-  min-width: 220px; padding: 16px; font-size: 13px;
-}
-.px-btn.rec.live { background: #4a1020; border-color: #ff4d4d; color: #ff8a8a; animation: pulse 1.2s steps(2) infinite; }
-@keyframes pulse { 50% { opacity: .65; } }
-.px-icon {
-  font: inherit; font-size: 14px; color: var(--ink); background: #17121f;
-  border: 2px solid var(--line); padding: 6px 10px; cursor: pointer; border-radius: 0;
-}
-.px-icon.big { font-size: 16px; padding: 10px 14px; border-color: var(--ink); }
-.px-input {
-  font: inherit; font-size: 11px; text-align: center; color: var(--ink); background: #17121f;
-  border: 2px solid var(--line); border-radius: 0; padding: 12px; width: min(260px, 80vw);
-}
+.px-icon { font-size: 14px; color: var(--ink); background: rgba(23,18,31,.9);
+  border: 2px solid var(--line); padding: 6px 10px; }
+.px-input { font-family: inherit; font-size: 11px; text-align: center; color: var(--ink);
+  background: #17121f; border: 2px solid var(--line); border-radius: 0; padding: 12px; width: min(260px, 80vw); }
+button:focus-visible, .tape:focus-visible, .card:focus-visible { outline: 3px solid var(--pink); outline-offset: 3px; }
 
-/* record + playback stage */
-.stage { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
-.overlay { position: absolute; left: 0; right: 0; padding: var(--pad); pointer-events: none; z-index: 2; }
-.overlay > * { pointer-events: auto; }
-.overlay.top { top: 0; padding-top: max(var(--pad), env(safe-area-inset-top));
-  display: flex; justify-content: space-between; align-items: flex-start; }
-.overlay.bottom { bottom: 0; padding-bottom: max(var(--pad), env(safe-area-inset-bottom));
-  display: flex; flex-direction: column; align-items: center; gap: 8px; }
-.badge { font-size: 9px; color: var(--dim); background: #0d0a14cc; border: 2px solid var(--line); padding: 6px 8px; }
-.hint { position: absolute; inset: 0; display: flex; flex-direction: column;
-  align-items: center; justify-content: center; text-align: center; pointer-events: none; z-index: 1; }
-.timer { font-size: 13px; color: var(--pink); }
-.timer.sm { font-size: 9px; min-width: 46px; text-align: right; color: var(--dim); }
+/* bars floating over the stage */
+.bar { position: fixed; left: 0; right: 0; padding: var(--pad); z-index: 2;
+  pointer-events: none; display: flex; }
+.bar > * { pointer-events: auto; }
+.bar.top { top: 0; padding-top: max(var(--pad), env(safe-area-inset-top));
+  justify-content: space-between; align-items: flex-start; }
+.bar.bottom { bottom: 0; padding-bottom: max(var(--pad), env(safe-area-inset-bottom));
+  flex-direction: column; align-items: center; gap: 8px; padding-top: 26px;
+  background: linear-gradient(to top, rgba(7,6,11,.94) 55%, rgba(7,6,11,0)); }
+.badge { font-size: 8px; color: var(--dim); background: rgba(13,10,20,.85);
+  border: 2px solid var(--line); padding: 6px 8px; }
+.hint { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; text-align: center; pointer-events: none; z-index: 1; padding: 0 var(--pad); }
 
-/* player */
-.player { background: linear-gradient(to top, #07060bf2 55%, transparent); padding-top: 24px; }
-.player .row { display: flex; align-items: center; gap: 10px; width: 100%; max-width: 520px; }
-.track { position: relative; flex: 1; height: 16px; background: #17121f; border: 2px solid var(--line); cursor: pointer; }
+/* the cassette */
+.tape { width: min(340px, 88vw); height: 132px; display: block; cursor: pointer; }
+.tape.preview { margin: 0 auto; }
+
+.row { display: flex; align-items: center; gap: 10px; width: 100%; max-width: 520px; }
+.timer.sm { font-size: 9px; color: var(--dim); min-width: 44px; text-align: right;
+  font-variant-numeric: tabular-nums; }
+.track { position: relative; flex: 1; height: 14px; background: #17121f; border: 2px solid var(--line); cursor: pointer; }
 .fill { position: absolute; inset: 0 auto 0 0; width: 0; background: #3a2b4a; }
 .ticks { position: absolute; inset: 0; }
 .ticks i { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--green); }
 .ticks i.react { background: var(--pink); top: 50%; }
 
-.deck { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; max-width: 520px; max-height: 27vh; overflow-y: auto; }
-.deck button {
-  font-family: inherit; font-size: 16px; line-height: 1; background: #17121f; color: var(--ink);
-  border: 2px solid var(--line); border-radius: 0; padding: 7px 8px; cursor: pointer;
-}
+.deck { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; max-width: 520px;
+  max-height: 24vh; overflow-y: auto; }
+.deck button { font-family: inherit; font-size: 16px; line-height: 1; background: #17121f;
+  color: var(--ink); border: 2px solid var(--line); padding: 6px 8px; }
 .deck button.txt { font-size: 8px; line-height: 1.4; max-width: 150px; }
 .deck button.on { border-color: var(--pink); background: #2a1530; }
+.deck img { width: 26px; height: 26px; display: block; image-rendering: pixelated; }
 
-/* garden list */
-.list-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+/* gardens */
+.list-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; }
+.head-btns { display: flex; gap: 8px; align-items: center; }
 .list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-.card {
-  border: 2px solid var(--line); background: #0f0b17; box-shadow: 4px 4px 0 #000;
-  padding: 12px; cursor: pointer; display: flex; justify-content: space-between; gap: 10px; align-items: center;
-}
+.card { border: 2px solid var(--line); background: rgba(15,11,23,.92); box-shadow: 4px 4px 0 #000;
+  padding: 12px; cursor: pointer; display: flex; justify-content: space-between; gap: 10px;
+  align-items: center; width: 100%; text-align: left; color: var(--ink); font-family: inherit; }
 .card.unread { border-color: var(--pink); }
 .card .title { font-size: 11px; }
 .card .sub { font-size: 8px; color: var(--dim); }
 .card .grow { font-size: 18px; }
-.census { font-size: 9px; line-height: 2; color: var(--ink); margin: 2px 0; text-align: left; }
+.census { font-family: inherit; font-size: 9px; line-height: 2; text-align: left; margin: 2px 0; }
 .verdict { color: var(--pink); max-width: 300px; }
 a { color: var(--pink); }
+
+/* customise sheet */
+.sheet { position: fixed; inset: 0; z-index: 5; background: rgba(7,6,11,.88);
+  display: flex; align-items: flex-end; justify-content: center; }
+.sheet-inner { width: 100%; max-width: 520px; max-height: 92vh; overflow-y: auto;
+  background: var(--panel); border: 2px solid var(--line); box-shadow: 0 -6px 0 #000;
+  padding: var(--pad) var(--pad) max(var(--pad), env(safe-area-inset-bottom)); }
+.swatches { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+.swatches button { width: 38px; height: 38px; border-radius: 50%; border: 2px solid var(--line); padding: 0; }
+.swatches button.on { border-color: var(--ink); box-shadow: 0 0 0 3px rgba(255,126,182,.5); }
+.swatches.wide button { width: auto; height: auto; border-radius: 0; font-size: 9px;
+  padding: 9px 11px; background: #17121f; color: var(--ink); }
+.swatches.wide button.on { border-color: var(--pink); background: #2a1530; }
