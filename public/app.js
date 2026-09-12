@@ -3,7 +3,7 @@
 import { Store } from './store.js';
 
 const $ = (s) => document.querySelector(s);
-const SCREENS = ['signin', 'gate', 'home', 'record', 'done', 'inbox', 'garden'];
+const SCREENS = ['trouble', 'gate', 'home', 'record', 'done', 'inbox', 'garden'];
 const show = (name) => {
   SCREENS.forEach((s) => $('#s-' + s).classList.toggle('hidden', s !== name));
   $('#stage-home').classList.toggle('hidden', name !== 'home');
@@ -618,26 +618,13 @@ $('#gate-go').onclick = async () => {
   try { await Store.list(); openHome(); }
   catch (err) { $('#gate-err').textContent = 'nope, try again'; }
 };
-$('#signin-go').onclick = async () => {
-  const email = $('#signin-input').value.trim();
-  if (!email) return;
-  $('#signin-go').disabled = true;
-  $('#signin-msg').textContent = 'sending…';
-  try {
-    await Store.signIn(email);
-    $('#signin-msg').textContent = 'check your email — tap the link on this device.';
-  } catch (err) {
-    $('#signin-msg').textContent = err.message;
-    $('#signin-go').disabled = false;
-  }
-};
-$('#signin-out').onclick = async () => { await Store.signOut(); show('signin'); };
-
 async function boot() {
   if (Store.needsAuth) {
-    Store.onAuthChange((session) => { if (session) openHome(); });
-    if (!(await Store.session())) return show('signin');
-    $('#signin-out').classList.remove('hidden');
+    const { ok, message } = await Store.ensureSession();
+    if (!ok) {
+      $('#trouble-msg').textContent = message;
+      return show('trouble');
+    }
     return openHome();
   }
   const { needsPass } = await fetch('/api/config').then((r) => r.json()).catch(() => ({ needsPass: false }));

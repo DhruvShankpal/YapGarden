@@ -75,24 +75,22 @@ link that works on any phone, with no server of your own to run.
 Setup, once:
 
 1. **Make a Supabase project** at supabase.com (free, no card).
-2. **Run the schema.** SQL editor → paste all of `supabase/setup.sql` → Run.
-   Edit the two emails at the bottom first: those, and only those, can read
-   or write anything.
-3. **Paste your keys** into `public/config.js` — `supabaseUrl` and
-   `supabaseAnonKey` from Settings → Data API. Both are safe to commit: the
-   anon key is meant to be public, and row-level security is what actually
+2. **Turn on anonymous sign-ins.** Authentication -> Sign In / Providers ->
+   Anonymous sign-ins -> enable. There is no sign-in screen: the page signs
+   itself in the first time it loads, so anyone with the link is in. Each
+   visitor still gets a real user id, which is what separates your yaps from
+   theirs and stops one person deleting another's.
+3. **Run the schema.** SQL editor -> paste all of `supabase/setup.sql` -> Run.
+4. **Paste your keys** into `public/config.js` — `supabaseUrl` and
+   `supabaseAnonKey` from Settings -> API Keys. Both are safe to commit: the
+   publishable key is meant to be public, and row-level security is what
    guards the data.
-4. **Allow the redirect.** Authentication → URL Configuration → add your Pages
-   URL (`https://<you>.github.io/YapGarden/`) to Redirect URLs, or the sign-in
-   link will bounce you somewhere else.
-5. **Switch Pages on.** Repo Settings -> Pages -> Source: **GitHub Actions**.
-   This one is manual: the workflow token is not permitted to create the Pages
-   site, so the deploy fails with "Create Pages site failed" until you do it.
-6. **Push.** The workflow in `.github/workflows/pages.yml` then deploys
-   `public/` on every push to `main`.
+5. **Push.** The workflow in `.github/workflows/pages.yml` deploys `public/`
+   on every push to `main`.
 
-Signing in is a magic link: type your email, tap the link in the message **on
-the same device**. No passwords.
+**Anyone with the link can use it.** That is deliberate, but it does mean the
+recordings are readable by anyone who has the URL — treat the link itself as
+the only thing keeping them private.
 
 To go back to the local server, blank out the two values in `config.js` — the
 same front-end then talks to `server.js` again.
@@ -213,3 +211,6 @@ Run these once, in order, in the SQL editor:
 - `supabase/migrate-02-delete.sql` — adds the delete policies. Without it the
   delete button fails silently, because row-level security refuses the delete
   and reports no error.
+- `supabase/migrate-03-open.sql` — removes the email sign-in and the member
+  allowlist, so anyone with the link can use it. Enable anonymous sign-ins
+  first, or the app will load and tell you to.

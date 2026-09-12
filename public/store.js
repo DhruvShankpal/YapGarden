@@ -77,36 +77,26 @@ export const Store = {
 
   note: '',
 
-  async session() {
-    if (!useSupabase) return { email: null };
+  // No sign-in screen: the page signs itself in anonymously the first time it
+  // loads and keeps that identity in this browser. Everyone with the link is
+  // in, but each device still has a real user id — which is what makes "yours"
+  // versus "theirs" work, and what stops one person deleting another's yaps.
+  async ensureSession() {
+    if (!useSupabase) return { ok: true };
     const s = await client();
     const { data } = await s.auth.getSession();
-    myUid = data.session ? data.session.user.id : null;
-    return data.session ? { email: data.session.user.email } : null;
-  },
-
-  async onAuthChange(cb) {
-    if (!useSupabase) return;
-    const s = await client();
-    s.auth.onAuthStateChange((_e, sess) => {
-      myUid = sess ? sess.user.id : null;
-      cb(sess ? { email: sess.user.email } : null);
-    });
-  },
-
-  async signIn(email) {
-    const s = await client();
-    const { error } = await s.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: location.origin + location.pathname },
-    });
-    if (error) throw new Error(error.message);
-  },
-
-  async signOut() {
-    if (!useSupabase) return;
-    const s = await client();
-    await s.auth.signOut();
+    if (data.session) {
+      myUid = data.session.user.id;
+      return { ok: true };
+    }
+    const { data: fresh, error } = await s.auth.signInAnonymously();
+    if (error) {
+      return { ok: false, message: /anonymous/i.test(error.message)
+        ? 'turn on Anonymous sign-ins in Supabase: Authentication \u2192 Sign In / Providers'
+        : error.message };
+    }
+    myUid = fresh.user ? fresh.user.id : null;
+    return { ok: true };
   },
 
   async list() {
@@ -115,7 +105,7 @@ export const Store = {
       const me = deviceId();
       return gardens.map((g) => ({ ...g, mine: g.author === me }));
     }
-    if (!myUid) await this.session();
+    if (!myUid) await this.ensureSession();
     const s = await client();
     const { data, error } = await s.from('gardens').select('*, reactions(count)').order('created_at', { ascending: false }).limit(50);
     if (error) throw new Error(error.message);

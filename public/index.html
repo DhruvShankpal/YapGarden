@@ -17,15 +17,12 @@
 <canvas id="stage-record" class="stage hidden"></canvas>
 <canvas id="stage-play" class="stage hidden"></canvas>
 
-<!-- sign in (hosted build) -->
-<section id="s-signin" class="screen center hidden">
-  <div class="plant-mark">🌱</div>
+<!-- only shown if the app cannot reach its backend -->
+<section id="s-trouble" class="screen center hidden">
+  <div class="plant-mark">🥀</div>
   <h1>grow it out</h1>
-  <p class="small dim">yap about it. every tap grows a flower.</p>
-  <input id="signin-input" class="px-input" type="email" inputmode="email"
-         autocomplete="email" placeholder="you@email.com">
-  <button id="signin-go" class="px-btn">send me a link</button>
-  <p id="signin-msg" class="small"></p>
+  <p class="small dim">can't get in right now.</p>
+  <p id="trouble-msg" class="small err"></p>
 </section>
 
 <!-- passcode gate (local server with GARDEN_PASS set) -->
@@ -94,7 +91,6 @@
   </div>
   <div id="inbox-list" class="list"></div>
   <p id="inbox-note" class="foot"></p>
-  <button id="signin-out" class="px-btn ghost small-btn hidden">sign out</button>
 </section>
 
 <!-- playback -->
