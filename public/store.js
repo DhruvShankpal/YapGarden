@@ -178,9 +178,18 @@ export const Store = {
   async remove(garden) {
     if (!useSupabase) return api('/gardens/' + garden.id, { method: 'DELETE' });
     const s = await client();
-    const { error } = await s.from('gardens').delete().eq('id', garden.id);
+    // A delete the policies refuse matches no rows, which is not an error —
+    // it reports success having done nothing. Ask for what it removed.
+    const { data, error } = await s.from('gardens').delete().eq('id', garden.id).select('id');
     if (error) throw new Error(error.message);
-    if (garden.audioPath) await s.storage.from(BUCKET).remove([garden.audioPath]);
+    if (!data || !data.length) {
+      throw new Error('the database refused it — run supabase/migrate-02-delete.sql');
+    }
+    // The recording is now unreachable either way; failing to remove it would
+    // only leave a file behind, so do not fail the delete over it.
+    if (garden.audioPath) {
+      try { await s.storage.from(BUCKET).remove([garden.audioPath]); } catch (e) {}
+    }
   },
 
   async seen(gardenId, which) {

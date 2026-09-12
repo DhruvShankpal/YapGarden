@@ -351,7 +351,10 @@ async function openInbox() {
       bin.textContent = 'delete';
       arm(bin, 'delete', 'sure?', async () => {
         try { await Store.remove(g); openInbox(); }
-        catch (err) { bin.textContent = 'failed'; }
+        catch (err) {
+          bin.textContent = 'failed';
+          $('#inbox-note').textContent = err.message;
+        }
       });
       const side = document.createElement('span');
       side.className = 'card-side';
@@ -396,12 +399,13 @@ async function openGarden(id) {
   $('#g-fill').style.width = '0%';
   ticks();
 
-  const canReact = !g.mine;
-  $('#g-deck').classList.toggle('hidden', !canReact);
-  $('#g-deckhint').textContent = canReact
-    ? 'pick a sticker, then tap the garden to stamp it at that moment'
-    : `${g.reactions.length} reaction${g.reactions.length === 1 ? '' : 's'} — press play to watch them land`;
-  if (canReact) buildDeck();
+  // Anyone who can open a garden can react to it, their own included.
+  const n = g.reactions.length;
+  $('#g-deck').classList.remove('hidden');
+  $('#g-deckhint').textContent = n
+    ? `${n} reaction${n === 1 ? '' : 's'} — press play to watch them land, or stamp another`
+    : 'pick a sticker, then tap the garden to stamp it at that moment';
+  buildDeck();
 
   const bin = $('#g-bin');
   bin.classList.toggle('hidden', !g.mine);
@@ -410,10 +414,13 @@ async function openGarden(id) {
   if (g.mine) arm(bin, '🗑', 'delete?', async () => {
     audio.pause();
     try { await Store.remove(g); openInbox(); }
-    catch (err) { bin.textContent = 'failed'; }
+    catch (err) {
+      bin.textContent = '🗑';
+      $('#g-deckhint').textContent = err.message;
+    }
   });
 
-  Store.seen(id, canReact ? 'recipient' : 'author').catch(() => {});
+  Store.seen(id, g.mine ? 'author' : 'recipient').catch(() => {});
 }
 
 function buildDeck() {
@@ -467,7 +474,7 @@ function paintThumb(slot, id, tries = 0) {
 }
 
 async function stamp(e) {
-  if (!current || current.mine) return;
+  if (!current) return;
   if (!picked) { $('#g-deckhint').textContent = 'pick a sticker first 👇'; return; }
   const rect = $('#stage-play').getBoundingClientRect();
   const r = { ...picked, t: Math.round($('#g-audio').currentTime * 1000),
