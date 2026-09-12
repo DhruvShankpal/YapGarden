@@ -545,19 +545,26 @@ function openSettings() {
     tapes.appendChild(b);
   }
 
+  // Drawn scenes and your own pictures are kept apart, since several share a
+  // name — the drawn "blossom" is not the blossom photograph.
   const scenes = $('#set-scenes');
+  const photos = $('#set-photos');
   scenes.innerHTML = '';
-  for (const s of sceneList()) {
+  photos.innerHTML = '';
+  const pick = (s) => {
     const b = document.createElement('button');
     b.textContent = s.label;
     b.className = s.id === prefs.scene ? 'on' : '';
     b.onclick = () => {
       prefs.scene = s.id; prefs.save();
-      scenes.querySelectorAll('button').forEach((x) => x.classList.remove('on'));
+      for (const el of [scenes, photos]) el.querySelectorAll('button').forEach((x) => x.classList.remove('on'));
       b.classList.add('on');
     };
-    scenes.appendChild(b);
-  }
+    (s.custom ? photos : scenes).appendChild(b);
+  };
+  sceneList().forEach(pick);
+  $('#set-photos-label').classList.toggle('hidden', !photos.children.length);
+  photos.classList.toggle('hidden', !photos.children.length);
 }
 
 /* ── wiring ───────────────────────────────────────────────────────── */

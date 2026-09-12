@@ -138,3 +138,9 @@ a { color: var(--pink); }
   color: var(--dim); padding: 6px 8px; }
 .card-bin.armed { border-color: #ff5b5b; color: #ff5b5b; }
 .card-side { display: flex; align-items: center; gap: 8px; }
+
+/* Photo backgrounds are busy, so text over the stage needs its own contrast. */
+.screen.home .foot, .screen.home .small { color: var(--ink); text-shadow: 2px 2px 0 #000, 0 0 6px rgba(0,0,0,.9); }
+.screen.home h1 { text-shadow: 3px 3px 0 #000, 0 0 10px rgba(0,0,0,.8); }
+.hint .big, .hint .small { text-shadow: 2px 2px 0 #000, 0 0 6px rgba(0,0,0,.9); }
+.hint .small.dim { color: var(--ink); }

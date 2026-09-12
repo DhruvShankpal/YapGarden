@@ -10,7 +10,17 @@
 //   Groups: support, what, rage, said, useless. Anything else makes its own row.
 
 window.YAP_ASSETS = {
-  backgrounds: [],
+  backgrounds: [
+    // `ground` is how far down each picture its own ground line sits, as a
+    // fraction of the image height. The app lines that up with where plants
+    // grow from, so flowers come out of the sand, path or grass rather than
+    // hovering over it. `soil: 'none'` because each picture brings its own.
+    { id: 'desert-sunset',   label: 'desert',  src: 'backgrounds/desert-sunset.jpeg',   ground: 0.86, soil: 'none' },
+    { id: 'lake-sunset',     label: 'lake',    src: 'backgrounds/lake-sunset.jpeg',     ground: 0.90, soil: 'none' },
+    { id: 'blossom-bridge',  label: 'blossom', src: 'backgrounds/blossom-bridge.jpeg',  ground: 0.92, soil: 'none' },
+    { id: 'forest-clearing', label: 'forest',  src: 'backgrounds/forest-clearing.jpeg', ground: 0.88, soil: 'none' },
+    { id: 'kite-field',      label: 'field',   src: 'backgrounds/kite-field.jpeg',      ground: 0.90, soil: 'none' },
+  ],
   stickers: [
     { id: 'im-back', label: 'im back', src: 'stickers/im-back.jpeg' },
     { id: 'meme-cat', label: 'meme cat', src: 'stickers/meme-cat.jpeg' },

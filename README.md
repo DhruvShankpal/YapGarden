@@ -157,9 +157,19 @@ backgrounds: [
 ],
 ```
 
-It is scaled to cover the screen with smoothing off, so pixel art stays sharp.
-`soil: 'none'` if the picture already has its own ground; otherwise a dark strip
-is drawn along the bottom for the plants to grow out of.
+`ground` is the one worth setting: how far down the picture its own ground line
+sits, as a fraction of its height. The app lines that point up with where
+plants grow from, so flowers come out of the sand or grass in the picture
+rather than hovering above it. `soil: 'none'` if the picture brings its own
+ground; otherwise a dark strip is drawn along the bottom.
+
+Fitting handles the two shapes differently, so a wallpaper meant for a desktop
+still works on a phone. A picture close to the screen's shape is scaled to the
+width and slid vertically to line its ground up. A much wider one would leave
+most of the screen as flat colour, so past a threshold it fills the screen
+instead and loses some width. Anything still uncovered is filled with the
+colour of the nearest edge, so the sky just continues. The result is composed
+once per screen size rather than rescaled every frame.
 
 **Stickers.** Put a small square image (transparent background, 64–256px) in
 `public/stickers/`, then:

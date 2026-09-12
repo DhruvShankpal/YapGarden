@@ -135,28 +135,98 @@ function mesa(ctx, cx, groundY, w, h) {
   ctx.fillRect(cx + w / 2, groundY - h * 0.6, 10, h * 0.6);
 }
 
+// Fitting a picture to a phone screen, without cropping the life out of it.
+//
+// Plain "cover" is wrong here: a landscape wallpaper on a portrait screen
+// loses most of its width, and the ground in the picture lands wherever it
+// happens to. Instead: scale to the screen's WIDTH so the whole scene stays
+// in frame, then slide it vertically so the ground drawn in the picture sits
+// exactly where the plants grow from. Whatever that leaves uncovered is
+// filled with the colour of the nearest edge, so the sky simply continues.
+//
+// The result is composed once per size and reused, rather than rescaling a
+// large JPEG on every frame.
 function paintImage(ctx, entry, w, h, groundY, cache) {
-  let img = cache[entry.id];
-  if (!img) {
-    img = cache[entry.id] = new Image();
-    img.src = entry.src;
+  const slot = cache[entry.id] || (cache[entry.id] = {});
+
+  if (!slot.img) {
+    slot.img = new Image();
+    slot.img.onload = () => { slot.ready = true; slot.frame = null; };
+    slot.img.onerror = () => { slot.failed = true; };
+    slot.img.src = entry.src;
   }
-  ctx.fillStyle = entry.fallback || '#07060b';
-  ctx.fillRect(0, 0, w, h);
-  if (img.complete && img.naturalWidth) {
-    // cover, pixel-crisp
-    const scale = Math.max(w / img.naturalWidth, h / img.naturalHeight);
-    const dw = img.naturalWidth * scale, dh = img.naturalHeight * scale;
-    ctx.drawImage(img, Math.round((w - dw) / 2), Math.round((h - dh) / 2), Math.round(dw), Math.round(dh));
+  if (!slot.ready) {
+    ctx.fillStyle = entry.fallback || '#07060b';
+    ctx.fillRect(0, 0, w, h);
+    return;
   }
-  if (entry.soil !== 'none') {
-    ctx.fillStyle = entry.soil || 'rgba(30,20,12,.85)';
-    ctx.fillRect(0, groundY, w, h - groundY);
+
+  const key = w + 'x' + h + '@' + groundY;
+  if (slot.key !== key || !slot.frame) {
+    slot.frame = composeBackground(slot.img, entry, w, h, groundY);
+    slot.key = key;
   }
+  ctx.drawImage(slot.frame, 0, 0);
+}
+
+function composeBackground(img, entry, w, h, groundY) {
+  const frame = document.createElement('canvas');
+  frame.width = w; frame.height = h;
+  const c = frame.getContext('2d');
+  c.imageSmoothingEnabled = false;
+
+  let scale = w / img.naturalWidth;
+  let drawH = img.naturalHeight * scale;
+  // Fitting the width keeps the whole scene, but a wide picture on a tall
+  // screen then leaves most of the screen as flat extended colour. Past a
+  // point, filling the screen and losing some width reads better than a
+  // stripe of art floating in a void.
+  if (drawH < h * 0.72) { scale = h / img.naturalHeight; drawH = h; }
+  const drawW = img.naturalWidth * scale;
+  const left = Math.round((w - drawW) / 2);
+  // `ground` says how far down the picture its own ground line sits.
+  const ground = typeof entry.ground === 'number' ? entry.ground : 0.85;
+  let top = Math.round(groundY - ground * drawH);
+  // A picture taller than the screen can always cover it, so keep it covering
+  // and just slide it. A shorter one cannot, so let it sit where its ground
+  // line belongs and extend the edges instead of jamming it to the top.
+  if (drawH >= h) top = Math.min(0, Math.max(top, Math.round(h - drawH)));
+
+  const edge = edgeColours(img);
+  const bottom = top + drawH;
+  if (top > 0 || bottom < h || left > 0) {
+    c.fillStyle = edge.top;
+    c.fillRect(0, 0, w, Math.max(1, top + 1));
+    c.fillStyle = edge.bottom;
+    if (bottom < h) c.fillRect(0, Math.floor(bottom), w, Math.ceil(h - bottom) + 1);
+  }
+  c.drawImage(img, left, top, Math.ceil(drawW), Math.ceil(drawH));
+
+  if (entry.soil && entry.soil !== 'none') {
+    c.fillStyle = entry.soil;
+    c.fillRect(0, groundY, w, h - groundY);
+  }
+  return frame;
+}
+
+// Average colour of the top and bottom rows, for extending the picture.
+function edgeColours(img) {
+  if (img._edges) return img._edges;
+  const probe = document.createElement('canvas');
+  probe.width = 16; probe.height = 16;
+  const pc = probe.getContext('2d', { willReadFrequently: true });
+  pc.drawImage(img, 0, 0, 16, 16);
+  const px = pc.getImageData(0, 0, 16, 16).data;
+  const row = (y) => {
+    let r = 0, g = 0, b = 0;
+    for (let x = 0; x < 16; x++) { const i = (y * 16 + x) * 4; r += px[i]; g += px[i + 1]; b += px[i + 2]; }
+    return `rgb(${Math.round(r / 16)},${Math.round(g / 16)},${Math.round(b / 16)})`;
+  };
+  return (img._edges = { top: row(0), bottom: row(15) });
 }
 
 function sceneList() {
   const custom = (window.YAP_ASSETS && window.YAP_ASSETS.backgrounds || [])
-    .map((b) => ({ id: b.id, label: b.label || b.id }));
+    .map((b) => ({ id: b.id, label: b.label || b.id, custom: true }));
   return [...Object.entries(SCENES).map(([id, s]) => ({ id, label: s.label })), ...custom];
 }
